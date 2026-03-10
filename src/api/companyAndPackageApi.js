@@ -63,3 +63,9 @@ export const deleteCompany = async (id) => {
   const response = await axiosInstance.delete(`/companies/${id}`);
   return response.data;
 };
+
+  //login company
+  export const LoginCompany =async(data)=>{
+    const response = await axiosInstance.post('/companies/login', data);
+    return response.data;
+  }
