@@ -2,7 +2,10 @@
 import React, { useEffect, useState } from 'react';
 
 import Table from '../../components/common/Table';
-import Model from '../../components/common/Model';
+import { Modal, ConfirmDialog } from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
+import Input from '../../components/common/Input';
+import Loader from '../../components/common/Loader';
 import {
   fetchPermissions,
   createPermission,
@@ -23,7 +26,9 @@ const Permissions = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [rowToToggle, setRowToToggle] = useState(null);
+  const [rowToDelete, setRowToDelete] = useState(null);
   const [editData, setEditData] = useState(null);
   const [modalFields, setModalFields] = useState({ name: '', meta: '' });
   const [page, setPage] = useState(1);
@@ -33,6 +38,17 @@ const Permissions = () => {
   const [searchKey, setSearchKey] = useState('name');
   const [status, setStatus] = useState('');
 
+  // Form validation state
+  const [touched, setTouched] = useState({ name: false, meta: false });
+  const [formError, setFormError] = useState({ name: '', meta: '' });
+
+  // Reset validation state when modal opens/closes
+  useEffect(() => {
+    if (modalOpen) {
+      setTouched({ name: false, meta: false });
+      setFormError({ name: '', meta: '' });
+    }
+  }, [modalOpen]);
 
   const getPermissions = async (params = {}) => {
     try {
@@ -66,14 +82,30 @@ const Permissions = () => {
     setModalOpen(true);
   };
 
-  // Add/edit both name and meta fields using modal
-  const handleModalSubmit = async (fields) => {
+  const handleFieldChange = (e) => {
+    const { name, value } = e.target;
+    setModalFields((prev) => ({ ...prev, [name]: value }));
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setFormError((prev) => ({ ...prev, [name]: value ? '' : 'Required' }));
+  };
+
+  const handleModalSubmit = async (e) => {
+    e.preventDefault();
+    const newTouched = { name: true, meta: true };
+    setTouched(newTouched);
+    const newError = {
+      name: modalFields.name ? '' : 'Required',
+      meta: modalFields.meta ? '' : 'Required',
+    };
+    setFormError(newError);
+    if (!modalFields.name || !modalFields.meta) return;
+
     setModalLoading(true);
     try {
       if (editData) {
-        await updatePermission(editData._id, fields);
+        await updatePermission(editData._id, modalFields);
       } else {
-        await createPermission(fields);
+        await createPermission(modalFields);
       }
       setModalOpen(false);
       getPermissions();
@@ -92,11 +124,8 @@ const Permissions = () => {
       setModalFields({ name: row.name || '', meta: row.meta || '' });
       setModalOpen(true);
     } else if (action === 'delete') {
-      if (window.confirm('Are you sure you want to delete this permission?')) {
-        setLoading(true);
-        await deletePermission(row._id);
-        getPermissions();
-      }
+      setRowToDelete(row);
+      setDeleteConfirmOpen(true);
     } else if (action === 'status') {
       setLoading(true);
       await updatePermission(row._id, { status: row.status === 1 ? 0 : 1 });
@@ -159,6 +188,13 @@ const Permissions = () => {
         setRowToToggle(row);
         setConfirmModalOpen(true);
       },
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: DeleteIcon,
+      variant: 'danger',
+      onClick: row => handleRowAction('delete', row),
     }
   ];
 
@@ -175,20 +211,24 @@ const Permissions = () => {
     setRowToToggle(null);
   };
 
+  const handleConfirmDelete = async () => {
+    if (rowToDelete) {
+      setLoading(true);
+      await deletePermission(rowToDelete._id);
+      getPermissions();
+    }
+    setDeleteConfirmOpen(false);
+    setRowToDelete(null);
+  };
+
 
   return (
     <div className="p-2">
-      <div className="mb-4 flex justify-end">
-        <button
-          className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
-          onClick={handleAdd}
-        >
-          Add Permission
-        </button>
-      </div>
+      <PageHeader
+        title="Permissions"
+        actions={<button className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium cursor-pointer" onClick={handleAdd}>Add Permission</button>}
+      />
       <Table
-        // title="Permissions"
-        // subtitle="Manage permissions for your team"
         headers={tableHeaders}
         values={values}
         total={total}
@@ -205,48 +245,81 @@ const Permissions = () => {
         actions={actions}
         onRowAction={handleRowAction}
       />
-      <Model
-        open={modalOpen}
-        loading={modalLoading}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleModalSubmit}
-        fields={modalFields}
-        setFields={setModalFields}
-        editData={editData}
-      />
 
-      {/* Custom Confirmation Modal */}
-      {confirmModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-lg shadow-xl outline-none overflow-hidden max-w-md w-full p-6 text-center transform transition-all">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-bold leading-6 text-gray-900 mb-2">Change Status</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?
-            </p>
-            <div className="flex justify-center gap-3">
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editData ? 'Edit Permission' : 'Add New Permission'}
+        footer={
+          !modalLoading && (
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors"
-                onClick={handleCancelToggle}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all cursor-pointer"
+                onClick={() => setModalOpen(false)}
               >
                 Cancel
               </button>
               <button
-                type="button"
-                className="inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm sm:w-auto transition-colors bg-emerald-600 hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                onClick={handleConfirmToggle}
+                type="submit"
+                form="permission-form"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 transition-all shadow-sm cursor-pointer"
               >
-                Confirm Update
+                {editData ? 'Save Changes' : 'Create Permission'}
               </button>
             </div>
+          )
+        }
+      >
+        {modalLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader />
           </div>
-        </div>
-      )}
+        ) : (
+          <form id="permission-form" onSubmit={handleModalSubmit} className="space-y-2">
+            <Input
+              label="Permission Name"
+              name="name"
+              placeholder="e.g. read_users"
+              value={modalFields.name || ''}
+              onChange={handleFieldChange}
+              onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
+              error={touched.name && formError.name ? formError.name : ''}
+              required
+            />
+            <Input
+              label="Meta Description"
+              name="meta"
+              type="textarea"
+              placeholder="Describe what this permission allows..."
+              value={modalFields.meta || ''}
+              onChange={handleFieldChange}
+              onBlur={() => setTouched((prev) => ({ ...prev, meta: true }))}
+              error={touched.meta && formError.meta ? formError.meta : ''}
+              required
+            />
+          </form>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmModalOpen}
+        onClose={handleCancelToggle}
+        onConfirm={handleConfirmToggle}
+        title="Change Status"
+        message={<>Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?</>}
+        confirmLabel="Confirm Update"
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setRowToDelete(null); }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Permission"
+        message={<>Are you sure you want to delete <span className="font-semibold text-gray-800">"{rowToDelete?.name}"</span>? This action cannot be undone.</>}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 };

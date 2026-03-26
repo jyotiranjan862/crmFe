@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import Table from '../../components/common/Table';
 import Input from '../../components/common/Input';
+import { Modal, ConfirmDialog } from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
 import {
   fetchRoles,
   createRole,
@@ -197,14 +199,17 @@ const Roles = () => {
 
   return (
     <div className="p-2">
-      <div className="mb-4 flex justify-end">
-        <button
-          className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
-          onClick={handleAdd}
-        >
-          Add Role
-        </button>
-      </div>
+      <PageHeader
+        title="Roles"
+        actions={
+          <button
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
+            onClick={handleAdd}
+          >
+            Add Role
+          </button>
+        }
+      />
 
       <Table
         headers={tableHeaders}
@@ -223,111 +228,67 @@ const Roles = () => {
         actions={actions}
       />
 
-      {/* Reusing Your Modal Component BUT wrapping our inputs manually to bypass it's strict generic structure if needed.
-          Wait, Model accepts fields, setFields, and onSubmit out of the box. We will modify Model.jsx momentarily 
-          to support more dynamic children OR just render our own Inputs inside Roles for full control. 
-          Actually, let's keep it simple: We will pass a prop to Model to render children, or adjust Model to accept an array of config.
-          For this instruction, we will just conditionally render our exact UI inside a custom duplicate modal for Roles OR update Model. */}
-
-      {/* We will just create a dedicated modal here specifically for roles using our brand new Input since Model.jsx has hardcoded "name" and "meta". */}
-      {modalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50 p-4 transition-opacity">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {editData ? 'Edit Role' : 'Add New Role'}
-              </h2>
-              <button
-                className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 rounded-full p-2 focus:outline-none"
-                onClick={() => setModalOpen(false)}
-              >
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto">
-              {modalLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <span className="text-emerald-600">Loading...</span>
-                </div>
-              ) : (
-                <>
-                  <form id="role-form" onSubmit={(e) => { e.preventDefault(); handleModalSubmit(modalFields); }} className="space-y-4">
-                    <Input
-                      label="Role Name"
-                      name="name"
-                      placeholder="e.g. Support Admin"
-                      value={modalFields.name}
-                      onChange={(e) => setModalFields({ ...modalFields, name: e.target.value })}
-                      required
-                    />
-                    <Input
-                      label="Assign Permissions"
-                      name="permissions"
-                      type="multiselect"
-                      placeholder="Select permissions..."
-                      options={permissionsList}
-                      value={modalFields.permissions}
-                      onChange={(e) => setModalFields({ ...modalFields, permissions: e.target.value })}
-                    />
-                  </form>
-                  <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <button
-                      type="button"
-                      className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all"
-                      onClick={() => setModalOpen(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      form="role-form"
-                      className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 transition-all shadow-sm"
-                    >
-                      {editData ? 'Save Changes' : 'Create Role'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Confirmation Modal */}
-      {confirmModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-lg shadow-xl outline-none overflow-hidden max-w-md w-full p-6 text-center transform transition-all">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-bold leading-6 text-gray-900 mb-2">Change Status</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?
-            </p>
-            <div className="flex justify-center gap-3">
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editData ? 'Edit Role' : 'Add New Role'}
+        size="md"
+        footer={
+          !modalLoading && (
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors"
-                onClick={handleCancelToggle}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all"
+                onClick={() => setModalOpen(false)}
               >
                 Cancel
               </button>
               <button
-                type="button"
-                className="inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm sm:w-auto transition-colors bg-emerald-600 hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                onClick={handleConfirmToggle}
+                type="submit"
+                form="role-form"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 transition-all shadow-sm"
               >
-                Confirm Update
+                {editData ? 'Save Changes' : 'Create Role'}
               </button>
             </div>
+          )
+        }
+      >
+        {modalLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <span className="text-emerald-600">Loading...</span>
           </div>
-        </div>
-      )}
+        ) : (
+          <form id="role-form" onSubmit={(e) => { e.preventDefault(); handleModalSubmit(modalFields); }} className="space-y-4">
+            <Input
+              label="Role Name"
+              name="name"
+              placeholder="e.g. Support Admin"
+              value={modalFields.name}
+              onChange={(e) => setModalFields({ ...modalFields, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Assign Permissions"
+              name="permissions"
+              type="multiselect"
+              placeholder="Select permissions..."
+              options={permissionsList}
+              value={modalFields.permissions}
+              onChange={(e) => setModalFields({ ...modalFields, permissions: e.target.value })}
+            />
+          </form>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmModalOpen}
+        onClose={handleCancelToggle}
+        onConfirm={handleConfirmToggle}
+        title="Change Status"
+        message={<>Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?</>}
+        confirmLabel="Confirm Update"
+      />
     </div>
   );
 };

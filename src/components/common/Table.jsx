@@ -14,140 +14,98 @@ const timePassed = (date) => {
 };
 
 // --------------------
-// Built-in Cell Renderers (use via header.type or header.render)
+// Built-in Cell Renderers
 // --------------------
 export const CellRenderers = {
-  // Avatar + text: { avatar: "url", name: "John", sub: "Engineer" }
   avatar: (value) => (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+    <div className="flex items-center gap-2.5">
       <img
         src={value?.avatar}
         alt={value?.name || ""}
-        style={{
-          width: 34, height: 34, borderRadius: "50%",
-          objectFit: "cover", border: "2px solid #e5e7eb",
-          flexShrink: 0,
-        }}
+        className="w-8.5 h-8.5 rounded-full object-cover border-2 border-gray-200 shrink-0"
         onError={(e) => {
           e.target.style.display = "none";
           e.target.nextSibling.style.display = "flex";
         }}
       />
-      <span
-        style={{
-          display: "none", width: 34, height: 34, borderRadius: "50%",
-          background: "linear-gradient(135deg,#667eea,#764ba2)",
-          color: "#fff", fontSize: 13, fontWeight: 700,
-          alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}
-      >
+      <span className="hidden w-8.5 h-8.5 rounded-full bg-linear-to-br from-indigo-400 to-purple-600 text-white text-[13px] font-bold items-center justify-center shrink-0">
         {(value?.name || "?")[0].toUpperCase()}
       </span>
       <div>
-        <div style={{ fontWeight: 600, color: "#111827", fontSize: 13 }}>{value?.name || "-"}</div>
-        {value?.sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{value.sub}</div>}
+        <div className="font-semibold text-gray-900 text-[13px]">{value?.name || "-"}</div>
+        {value?.sub && <div className="text-[11px] text-gray-400 mt-px">{value.sub}</div>}
       </div>
     </div>
   ),
 
-  // Status badge: string or { label, color }
   status: (value) => {
     const presets = {
-      active: { bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
-      inactive: { bg: "#f3f4f6", color: "#6b7280", dot: "#9ca3af" },
-      pending: { bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
-      error: { bg: "#fee2e2", color: "#991b1b", dot: "#ef4444" },
-      success: { bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
-      warning: { bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
-      info: { bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6" },
+      active: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+      inactive: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
+      pending: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+      error: { bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
+      success: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+      warning: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+      info: { bg: "bg-blue-100", text: "text-blue-800", dot: "bg-blue-500" },
     };
     const isObj = typeof value === "object" && value !== null;
     const label = isObj ? value.label : value;
     const key = String(label || "").toLowerCase();
-    const preset = presets[key] || { bg: "#f3f4f6", color: "#374151", dot: "#6b7280" };
-    const bg = isObj && value.bg ? value.bg : preset.bg;
-    const color = isObj && value.color ? value.color : preset.color;
-    const dot = isObj && value.dot ? value.dot : preset.dot;
+    const preset = presets[key] || { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" };
+
+    if (isObj && value.bg) {
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide capitalize whitespace-nowrap"
+          style={{ background: value.bg, color: value.color || "#374151" }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: value.dot || value.color || "#6b7280" }} />
+          {label || "-"}
+        </span>
+      );
+    }
 
     return (
-      <span style={{
-        display: "inline-flex", alignItems: "center", gap: 5,
-        padding: "3px 10px", borderRadius: 20,
-        background: bg, color, fontSize: 11, fontWeight: 600,
-        letterSpacing: "0.03em", textTransform: "capitalize",
-        whiteSpace: "nowrap",
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide capitalize whitespace-nowrap ${preset.bg} ${preset.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${preset.dot}`} />
         {label || "-"}
       </span>
     );
   },
 
-  // Image thumbnail
   image: (value) => (
     <img
       src={value}
       alt=""
-      style={{
-        width: 40, height: 40, borderRadius: 8, objectFit: "cover",
-        border: "1px solid #e5e7eb",
-      }}
+      className="w-10 h-10 rounded-lg object-cover border border-gray-200"
     />
   ),
 
-  // Badge / tag: string or array of strings
   badge: (value) => {
     const items = Array.isArray(value) ? value : [value];
     return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <div className="flex gap-1 flex-wrap">
         {items.map((v, i) => (
-          <span key={i} style={{
-            padding: "2px 8px", borderRadius: 4,
-            background: "#f1f5f9", color: "#334155",
-            fontSize: 11, fontWeight: 500, border: "1px solid #e2e8f0",
-          }}>{v}</span>
+          <span key={i} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">
+            {v}
+          </span>
         ))}
       </div>
     );
   },
 
-  // Progress bar: number 0-100
   progress: (value) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div style={{
-        flex: 1, height: 6, background: "#e5e7eb", borderRadius: 3, overflow: "hidden", minWidth: 60,
-      }}>
-        <div style={{
-          height: "100%", width: `${Math.min(100, Math.max(0, value))}%`,
-          background: value > 70 ? "#10b981" : value > 40 ? "#f59e0b" : "#ef4444",
-          borderRadius: 3, transition: "width 0.3s ease",
-        }} />
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-15">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${value > 70 ? "bg-emerald-500" : value > 40 ? "bg-amber-500" : "bg-red-500"}`}
+          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
       </div>
-      <span style={{ fontSize: 11, color: "#6b7280", minWidth: 28 }}>{value}%</span>
+      <span className="text-[11px] text-gray-500 min-w-7">{value}%</span>
     </div>
   ),
 };
-
-// --------------------
-// SearchIcon
-// --------------------
-const SearchIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
-const ChevronLeft = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-);
-
-const ChevronRight = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-);
 
 // --------------------
 // Main Table Component
@@ -169,15 +127,13 @@ const Table = ({
   onPageSizeChange,
   onRowAction,
   actions = [],
-  title,
-  subtitle,
   emptyMessage = "No records found",
-  stickyHeader = true,
   onRowClick,
+  pageSizes = [5, 10, 20, 50],
+  height = "65vh",
 }) => {
   const [internalSearchText, setInternalSearchText] = useState("");
   const [internalSearchKey, setInternalSearchKey] = useState(searchKeys[0] || "");
-  const [hoveredRow, setHoveredRow] = useState(null);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
   const computedSearchText = searchText ?? internalSearchText;
@@ -198,205 +154,164 @@ const Table = ({
   const serialNumber = (index) => (page - 1) * pageSize + index + 1;
   const hasActions = onRowAction || actions.length > 0;
 
-  // Resolve cell value with custom renderer
   const renderCell = useCallback((row, header) => {
-    // 1. Support nested keys (e.g. 'meta.name')
-    const raw = header.key.includes('.')
-      ? header.key.split('.').reduce((acc, part) => acc && acc[part] !== undefined ? acc[part] : undefined, row)
+    const raw = header.key.includes(".")
+      ? header.key.split(".").reduce((acc, part) => acc && acc[part] !== undefined ? acc[part] : undefined, row)
       : row[header.key];
 
-    // 2. Custom header render function
     if (header.render) return header.render(raw, row);
 
     let displayValue = raw;
 
-    // 3. Value mapping (e.g. mapping code 1 to "Active")
     if (header.valueMap && header.valueMap[raw] !== undefined) {
       displayValue = header.valueMap[raw];
     }
 
-    // 4. Built-in cell renderers
     if (header.type && CellRenderers[header.type]) {
       return CellRenderers[header.type](displayValue, row);
     }
     if (displayValue === null || displayValue === undefined || displayValue === "") {
-      return <span style={{ color: "#d1d5db" }}>—</span>;
+      return <span className="text-gray-300">—</span>;
     }
 
-    // 5. Automatic formatting
-    if (header.format === 'number') return Number(displayValue).toLocaleString();
-    if (header.format === 'currency') return Number(displayValue).toLocaleString('en-US', { style: 'currency', currency: header.currency || 'USD' });
-    if (header.format === 'date') return new Date(displayValue).toLocaleDateString();
-    if (header.format === 'datetime') return new Date(displayValue).toLocaleString();
+    if (header.format === "number") return Number(displayValue).toLocaleString();
+    if (header.format === "currency") return Number(displayValue).toLocaleString("en-US", { style: "currency", currency: header.currency || "USD" });
+    if (header.format === "date") return new Date(displayValue).toLocaleDateString();
+    if (header.format === "datetime") return new Date(displayValue).toLocaleString();
 
     return String(displayValue);
   }, []);
 
-  const s = styles;
+  const visibleHeaders = headers.filter(h => h.label?.toLowerCase() !== "permissions");
+  const colSpan = visibleHeaders.length + 2 + (hasActions ? 1 : 0);
 
-  // Pagination range
-  const paginationPages = useMemo(() => {
-    const range = [];
-    const delta = 2;
-    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) {
-      range.push(i);
-    }
-    return range;
-  }, [page, totalPages]);
+  const start = total > 0 ? (page - 1) * pageSize + 1 : 0;
+  const end = Math.min(page * pageSize, total);
+
+  const hasSearch = onSearch || onSearchTextChange || searchKeys.length > 0;
 
   return (
-    <div style={s.wrapper}>
-      {/* Header bar with pagination and rows-per-page select */}
-      <div style={s.topBar}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 32 }}>
-          <div style={s.searchRow}>
-            {searchKeys.length > 0 && (
-              <select value={computedSearchKey} onChange={handleSearchKeyChange} style={s.select}>
-                {searchKeys.map((key) => {
-                  const header = headers.find((h) => h.key === key);
-                  return <option key={key} value={key}>{header?.label || key}</option>;
-                })}
-              </select>
-            )}
-            {(onSearch || onSearchTextChange || searchKeys.length > 0) && (
-              <div style={s.searchWrap}>
-                <span style={s.searchIcon}><SearchIcon /></span>
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={computedSearchText}
-                  onChange={handleSearchTextChange}
-                  style={s.searchInput}
-                />
-              </div>
-            )}
-          </div>
-          {/* Pagination and rows-per-page select */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ color: "#9ca3af", fontSize: 12 }}>Rows per page</span>
-            <select style={s.pageSizeSelect} value={pageSize} onChange={(e) => onPageSizeChange?.(Number(e.target.value))}>
-              {[5, 10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>{size}</option>
-              ))}
+    <div className="space-y-3">
+      {/* Search bar — separate card above the table */}
+      {hasSearch && (
+        <div className="flex items-center gap-2 flex-wrap bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+          {searchKeys.length > 0 && (
+            <select
+              value={computedSearchKey}
+              onChange={handleSearchKeyChange}
+              className="border border-gray-200 rounded-lg px-2.5 py-1.75 text-xs text-gray-700 bg-gray-50 outline-none cursor-pointer"
+            >
+              {searchKeys.map((key) => {
+                const header = headers.find((h) => h.key === key);
+                return <option key={key} value={key}>{header?.label || key}</option>;
+              })}
             </select>
-            <span style={{ color: "#9ca3af", fontSize: 12 }}>
-              {total > 0 && `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
-            </span>
-            <div style={s.pagination}>
-              <button style={s.pageBtn} onClick={() => onPageChange?.(page - 1)} disabled={page === 1}>
-                <ChevronLeft />
-              </button>
-              {paginationPages[0] > 1 && (
-                <>
-                  <button style={s.pageBtn} onClick={() => onPageChange?.(1)}>1</button>
-                  {paginationPages[0] > 2 && <span style={s.ellipsis}>…</span>}
-                </>
-              )}
-              {paginationPages.map((p) => (
-                <button
-                  key={p}
-                  style={{ ...s.pageBtn, ...(p === page ? s.pageBtnActive : {}) }}
-                  onClick={() => onPageChange?.(p)}
-                >
-                  {p}
-                </button>
-              ))}
-              {paginationPages[paginationPages.length - 1] < totalPages && (
-                <>
-                  {paginationPages[paginationPages.length - 1] < totalPages - 1 && <span style={s.ellipsis}>…</span>}
-                  <button style={s.pageBtn} onClick={() => onPageChange?.(totalPages)}>{totalPages}</button>
-                </>
-              )}
-              <button style={s.pageBtn} onClick={() => onPageChange?.(page + 1)} disabled={page === totalPages}>
-                <ChevronRight />
-              </button>
-            </div>
+          )}
+          <div className="relative flex items-center">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={computedSearchText}
+              onChange={handleSearchTextChange}
+              className="border border-gray-200 rounded-lg pl-8 pr-3 py-1.75 text-xs text-gray-900 bg-gray-50 outline-none w-55 transition focus:border-gray-400 focus:ring-1 focus:ring-gray-300 focus:bg-white"
+            />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Table */}
-      <div style={s.tableWrap}>
-        <table style={s.table}>
-          <thead>
+      {/* Table card */}
+      <div
+        className="bg-white rounded-lg shadow-xl border border-gray-100 overflow-auto scrollbar-hide"
+        style={{ height, maxHeight: height }}
+      >
+        <table className="min-w-full divide-y divide-gray-200 text-[13px]">
+          <thead className="bg-gray-50">
             <tr>
-              <th style={{ ...s.th, ...s.thSerial }}>#</th>
-              {headers.map((h, i) => (
-                h.label?.toLowerCase() === "permissions"
-                  ? null
-                  : <th key={i} style={s.th}>
-                    <div style={s.thInner}>
-                      <span>{h.label || h.key}</span>
-                      {h.filter && (
-                        <select
-                          style={s.filterSelect}
-                          value={h.filter.value}
-                          onChange={(e) => h.filter.onChange(e.target.value)}
-                        >
-                          {h.filter.options.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  </th>
+              <th className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 tracking-wide uppercase bg-purple-100 w-10">
+                #
+              </th>
+              {visibleHeaders.map((h, i) => (
+                <th key={i} className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <span>{h.label || h.key}</span>
+                    {h.filter && (
+                      <select
+                        className="border border-gray-200 rounded px-1.5 py-0.5 text-[11px] text-gray-700 bg-white outline-none cursor-pointer"
+                        value={h.filter.value}
+                        onChange={(e) => h.filter.onChange(e.target.value)}
+                      >
+                        {h.filter.options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </th>
               ))}
-              <th style={s.th}>Time</th>
-              {hasActions && <th style={{ ...s.th, textAlign: "right" }}>Actions</th>}
+              <th className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
+                Time
+              </th>
+              {hasActions && (
+                <th className="sticky top-0 z-10 px-2 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={headers.length + 2 + (hasActions ? 1 : 0)} style={s.emptyCell}>
-                  <div style={s.loadingWrap}>
+                <td colSpan={colSpan} className="px-4 py-12 text-center">
+                  <div className="flex flex-col gap-2.5 py-2 items-stretch max-w-md mx-auto">
                     {[0, 1, 2].map((i) => (
-                      <div key={i} style={{ ...s.skeleton, animationDelay: `${i * 0.15}s` }} />
+                      <div key={i} className="h-4.5 rounded-md bg-gray-100 animate-pulse w-full" style={{ animationDelay: `${i * 150}ms` }} />
                     ))}
                   </div>
                 </td>
               </tr>
             ) : values.length === 0 ? (
               <tr>
-                <td colSpan={headers.length + 2 + (hasActions ? 1 : 0)} style={s.emptyCell}>
-                  <div style={s.emptyState}>
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" style={{ marginBottom: 8 }}>
+                <td colSpan={colSpan} className="px-4 py-12 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" className="mb-2">
                       <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" />
                     </svg>
-                    <div style={{ color: "#9ca3af", fontSize: 13 }}>{emptyMessage}</div>
+                    <div className="text-gray-400 text-[13px]">{emptyMessage}</div>
                   </div>
                 </td>
               </tr>
             ) : (
               values.map((row, idx) => (
                 <tr
-                  key={idx}
-                  onMouseEnter={() => setHoveredRow(idx)}
-                  onMouseLeave={() => setHoveredRow(null)}
+                  key={row._id || idx}
                   onClick={() => onRowClick && onRowClick(row, idx)}
-                  style={{
-                    ...s.tr,
-                    background: hoveredRow === idx ? "#f8fafc" : idx % 2 === 0 ? "#fff" : "#fafafa",
-                    cursor: onRowClick ? "pointer" : "default",
-                  }}
+                  className={`hover:bg-gray-100 transition ${onRowClick ? "cursor-pointer" : ""}`}
                 >
-                  <td style={{ ...s.td, ...s.tdSerial }}>{serialNumber(idx)}</td>
-                  {headers.map((header, hidx) => (
-                    header.label?.toLowerCase() === "permissions"
-                      ? null
-                      : <td key={hidx} style={s.td}>{renderCell(row, header)}</td>
+                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-900 align-middle">
+                    {serialNumber(idx)}
+                  </td>
+                  {visibleHeaders.map((header, hidx) => (
+                    <td key={hidx} className="px-2 py-1 whitespace-nowrap text-xs text-gray-900 align-middle">
+                      {renderCell(row, header)}
+                    </td>
                   ))}
-                  <td style={{ ...s.td, ...s.tdTime }}>
-                    {row.time ? timePassed(row.time) : <span style={{ color: "#d1d5db" }}>—</span>}
+                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-400 align-middle">
+                    {row.time ? timePassed(row.time) : <span className="text-gray-300">—</span>}
                   </td>
                   {hasActions && (
-                    <td style={{ ...s.td, textAlign: "right" }}>
-                      <div style={s.actionRow}>
+                    <td className="px-2 py-1 text-right align-middle">
+                      <div className="flex gap-1.5 justify-end flex-wrap">
                         {actions.map((action, aidx) => (
                           <button
                             key={action.key || aidx}
-                            style={action.variant === "danger" ? s.btnDanger : s.btn}
-                            onClick={() => action.onClick(row)}
+                            className={`px-3 py-1 rounded-md border text-xs font-medium whitespace-nowrap transition cursor-pointer ${action.variant === "danger"
+                              ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100"
+                              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                              }`}
+                            onClick={(e) => { e.stopPropagation(); action.onClick(row); }}
                             title={action.label}
                           >
                             {action.icon || action.label}
@@ -412,120 +327,49 @@ const Table = ({
         </table>
       </div>
 
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-      `}</style>
+      {/* Pagination footer — separate card below the table */}
+      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-xl">
+        <div className="flex items-center space-x-3 text-sm text-gray-700">
+          <div>Rows per page:</div>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+            className="w-20 h-8 text-sm px-2 py-1 rounded-md border border-gray-200 bg-white outline-none cursor-pointer"
+          >
+            {pageSizes.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <div className="text-sm text-gray-500">
+            {total === 0
+              ? "Showing 0 of 0"
+              : `Showing ${start} - ${end} of ${total}`
+            }
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            disabled={page <= 1}
+            onClick={() => onPageChange?.(Math.max(1, page - 1))}
+            className="px-3 py-1 rounded border bg-white shadow-sm hover:shadow disabled:opacity-40 text-sm cursor-pointer disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <div className="text-sm">
+            Page {page} / {totalPages}
+          </div>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => onPageChange?.(Math.min(totalPages, page + 1))}
+            className="px-3 py-1 rounded border bg-white shadow-sm hover:shadow disabled:opacity-40 text-sm cursor-pointer disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
 
-// --------------------
-// Styles object
-// --------------------
-const styles = {
-  wrapper: {
-    fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 14,
-    overflow: "hidden",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
-    height: "80vh",
-    maxHeight: "80vh",
-    display: "flex",
-    flexDirection: "column",
-  },
-  topBar: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "16px 20px", borderBottom: "1px solid #f1f5f9",
-    gap: 12, flexWrap: "wrap",
-    background: "#fff",
-  },
-  title: { fontSize: 15, fontWeight: 700, color: "#111827", letterSpacing: "-0.01em" },
-  subtitle: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
-  searchRow: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
-  select: {
-    border: "1px solid #e5e7eb", borderRadius: 8, padding: "7px 10px",
-    fontSize: 12, color: "#374151", background: "#f9fafb",
-    outline: "none", cursor: "pointer",
-  },
-  searchWrap: { position: "relative", display: "flex", alignItems: "center" },
-  searchIcon: {
-    position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)",
-    color: "#9ca3af", display: "flex", pointerEvents: "none",
-  },
-  searchInput: {
-    border: "1px solid #e5e7eb", borderRadius: 8, padding: "7px 12px 7px 30px",
-    fontSize: 12, color: "#111827", background: "#f9fafb",
-    outline: "none", width: 200, transition: "border-color 0.15s",
-  },
-  tableWrap: { overflowX: "auto" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
-  th: {
-    padding: "10px 16px", textAlign: "left",
-    background: "#f8fafc", color: "#6b7280",
-    fontWeight: 600, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase",
-    borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap",
-  },
-  thSerial: { width: 48, textAlign: "center", color: "#d1d5db" },
-  thInner: { display: "flex", alignItems: "center", gap: 6 },
-  filterSelect: {
-    border: "1px solid #e5e7eb", borderRadius: 6, padding: "2px 6px",
-    fontSize: 11, color: "#374151", background: "#fff",
-    outline: "none", cursor: "pointer",
-  },
-  tr: { transition: "background 0.1s" },
-  td: {
-    padding: "11px 16px", color: "#374151",
-    borderBottom: "1px solid #f1f5f9", verticalAlign: "middle",
-  },
-  tdSerial: { textAlign: "center", color: "#d1d5db", fontSize: 11, fontWeight: 500 },
-  tdTime: { whiteSpace: "nowrap", color: "#9ca3af", fontSize: 12 },
-  emptyCell: { padding: "48px 16px", textAlign: "center" },
-  emptyState: {
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-  },
-  loadingWrap: {
-    display: "flex", flexDirection: "column", gap: 10, padding: "8px 0", alignItems: "stretch",
-  },
-  skeleton: {
-    height: 18, borderRadius: 6, background: "#f1f5f9",
-    animation: "pulse 1.5s ease-in-out infinite",
-    width: "100%",
-  },
-  actionRow: { display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" },
-  btn: {
-    padding: "5px 12px", borderRadius: 6, border: "1px solid #e5e7eb",
-    background: "#fff", color: "#374151", fontSize: 12, fontWeight: 500,
-    cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s",
-  },
-  btnDanger: {
-    padding: "5px 12px", borderRadius: 6, border: "1px solid #fee2e2",
-    background: "#fff5f5", color: "#ef4444", fontSize: 12, fontWeight: 500,
-    cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s",
-  },
-  footer: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "12px 20px", borderTop: "1px solid #f1f5f9",
-    background: "#fafafa", flexWrap: "wrap", gap: 8,
-  },
-  footerLeft: { display: "flex", alignItems: "center", gap: 8 },
-  pageSizeSelect: {
-    border: "1px solid #e5e7eb", borderRadius: 6, padding: "4px 8px",
-    fontSize: 12, color: "#374151", background: "#fff", outline: "none",
-  },
-  pagination: { display: "flex", gap: 4, alignItems: "center" },
-  pageBtn: {
-    minWidth: 30, height: 30, borderRadius: 6, border: "1px solid #e5e7eb",
-    background: "#fff", color: "#374151", fontSize: 12, fontWeight: 500,
-    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-    transition: "all 0.15s",
-  },
-  pageBtnActive: {
-    background: "#111827", color: "#fff", border: "1px solid #111827",
-  },
-  ellipsis: { color: "#9ca3af", fontSize: 12, padding: "0 2px" },
-};
-
-// export { CellRenderers }; // Removed duplicate export
 export default React.memo(Table);

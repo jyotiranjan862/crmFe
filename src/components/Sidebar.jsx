@@ -1,46 +1,47 @@
-import routes from "../utils/routes";
-import { Link, useLocation } from "react-router-dom";
+import { FaSignOutAlt } from "react-icons/fa";
 
-const Sidebar = () => {
-  const location = useLocation();
-  const adminRoutes = routes.filter((route) => route.module === "admin");
-
+const Sidebar = ({ brandHighlight = "", onLogout }) => {
   return (
-    <aside className="w-60 bg-emerald-600 min-h-screen flex flex-col shadow-lg">
-      {/* Logo/Header */}
-      <div className="flex items-center justify-center h-16 border-b border-emerald-700/40">
-        <span className="text-xl font-bold text-white tracking-wide select-none">
-          CRM<span className="text-emerald-200">Admin</span>
+    <aside
+      className="w-50 bg-[#0b0d17] min-h-screen flex flex-col shrink-0"
+      style={{ boxShadow: "2px 0 16px 0 rgb(0 0 0 / 0.18)" }}
+    >
+      {/* Brand */}
+      <div className="flex items-end gap-2 h-16 px-5 border-b border-white/6">
+        <span
+          className="text-[24px] font-extrabold tracking-tight select-none leading-none pb-3"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          <span className="text-white">ca</span>
+          <span className="text-indigo-400">lly</span>
         </span>
+        {brandHighlight && (
+          <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest pb-3.5 select-none">
+            {brandHighlight}
+          </span>
+        )}
       </div>
-      {/* Navigation */}
-      <nav className="flex-1 mt-2">
-        <ul className="flex flex-col gap-1 px-1">
-          {adminRoutes.map(({ path, label, icon: Icon }) => {
-            const isActive = location.pathname === path;
-            return (
-              <li key={path}>
-                <Link
-                  to={path}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-base font-semibold transition
-                    ${isActive ? "bg-white text-emerald-700 shadow-none" : "text-white/90 hover:bg-emerald-700/60 hover:text-white"}
-                    focus:outline-none focus:ring-2 focus:ring-emerald-300`}
-                >
-                  {Icon && (
-                    <Icon
-                      className={`text-xl ${isActive ? "text-emerald-600" : "text-emerald-200 group-hover:text-white"}`}
-                    />
-                  )}
-                  <span className="truncate">{label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-      <div className="mt-auto py-3 px-3 border-t border-emerald-700/40 text-xs text-emerald-100/80 text-center select-none">
-        &copy; {new Date().getFullYear()} ApexInnovs CRM
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Logout */}
+      {onLogout && (
+        <div className="px-3 pb-4">
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium
+              text-gray-500 hover:bg-red-500/15 hover:text-red-400 transition-all duration-150 focus:outline-none"
+          >
+            <FaSignOutAlt className="shrink-0 text-[15px]" />
+            <span>Logout</span>
+          </button>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="py-3 px-4 border-t border-white/6 text-[11px] text-gray-700 text-center select-none">
+        &copy; {new Date().getFullYear()} Cally
       </div>
     </aside>
   );

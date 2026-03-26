@@ -1,50 +1,57 @@
-// src/App.js
-
 import React, { Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import routes from "./utils/routes";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layout/mainLayout";
+import ProtectedRoute from "./routes/ProtectedRoute";
 import NotFoundPage from "./page/common/NotFoundPage";
+import LoginPage from "./page/common/LoginPage";
 import Loader from "./components/common/Loader";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
+  const { isAuthenticated, userType, loading } = useAuth();
+
+  if (loading) return <Loader />;
+
   return (
     <Router>
       <Suspense fallback={<Loader />}>
         <Routes>
-          {routes.map((route, index) => {
-            const { path, component: Component, module } = route;
+          {/* Public route */}
+          <Route path="/login" element={
+            isAuthenticated
+              ? <Navigate to={`/${userType}`} replace />
+              : <LoginPage />
+          } />
 
-            // Admin routes (with layout)
-            if (module === "admin") {
-              return (
-                <Route
-                  key={index}
-                  path={path}
-                  element={
-                    <MainLayout>
-                      <Component />
-                    </MainLayout>
-                  }
-                />
-              );
-            }
+          {/* Root redirect */}
+          <Route path="/" element={
+            isAuthenticated
+              ? <Navigate to={`/${userType}`} replace />
+              : <Navigate to="/login" replace />
+          } />
 
-            // Auth routes (no layout)
-            if (module === "auth") {
-              return (
-                <Route
-                  key={index}
-                  path={path}
-                  element={<Component />}
-                />
-              );
-            }
+          {/* Admin route - single page with tabs */}
+          <Route path="/admin" element={
+            <ProtectedRoute allowedUserTypes={['admin']}>
+              <MainLayout />
+            </ProtectedRoute>
+          } />
 
-            return null;
-          })}
+          {/* Company route - single page with tabs */}
+          <Route path="/company" element={
+            <ProtectedRoute allowedUserTypes={['company']}>
+              <MainLayout />
+            </ProtectedRoute>
+          } />
 
-          <Route path="/notfound" element={<NotFoundPage />} />
+          {/* Employee route - single page with tabs */}
+          <Route path="/employee" element={
+            <ProtectedRoute allowedUserTypes={['employee']}>
+              <MainLayout />
+            </ProtectedRoute>
+          } />
+
+          {/* Catch-all */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

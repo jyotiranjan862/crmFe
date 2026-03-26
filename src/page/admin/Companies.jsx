@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import Table from '../../components/common/Table';
 import Input from '../../components/common/Input';
+import { Modal, ConfirmDialog } from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
 import {
   fetchCompanies,
   createCompany,
@@ -199,18 +201,18 @@ const Companies = () => {
 
   return (
     <div className="p-2">
-      <div className="mb-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold text-gray-800 tracking-tight">Companies directory</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage onboarded companies and verify profiles.</p>
-        </div>
-        <button
-          className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium"
-          onClick={handleAdd}
-        >
-          Add Company
-        </button>
-      </div>
+      <PageHeader
+        title="Companies directory"
+        subtitle="Manage onboarded companies and verify profiles."
+        actions={
+          <button
+            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium"
+            onClick={handleAdd}
+          >
+            Add Company
+          </button>
+        }
+      />
 
       <Table
         headers={tableHeaders}
@@ -230,195 +232,162 @@ const Companies = () => {
       />
 
       {/* Add / Edit Company Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4 transition-opacity">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl relative overflow-hidden flex flex-col max-h-[95vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editData ? 'Edit Company Profile' : 'Register New Company'}
-              </h2>
-              <button
-                className="text-gray-400 hover:text-gray-700 transition-colors bg-white hover:bg-gray-100 border border-gray-200 rounded-full p-2 focus:outline-none"
-                onClick={() => setModalOpen(false)}
-              >
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto">
-              {modalLoading ? (
-                <div className="flex justify-center items-center py-20">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                </div>
-              ) : (
-                <form id="company-form" onSubmit={(e) => { e.preventDefault(); handleModalSubmit(); }} className="space-y-6">
-
-                  {/* Profile Registration */}
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Core Identity</h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                      <div className="lg:col-span-1">
-                        <Input
-                          label="Company Logo URL"
-                          name="logo"
-                          type="image" // Use our visual image preview fallback if string given
-                          value={modalFields.logo}
-                          onChange={(e) => setModalFields({ ...modalFields, logo: e.target.value })}
-                        />
-                      </div>
-                      <div className="lg:col-span-3 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input
-                            label="Company Name"
-                            name="name"
-                            placeholder="e.g. Acme Corp"
-                            value={modalFields.name}
-                            onChange={(e) => setModalFields({ ...modalFields, name: e.target.value })}
-                            required
-                          />
-                          <Input
-                            label="Contact Email"
-                            name="email"
-                            type="email"
-                            placeholder="admin@acme.com"
-                            value={modalFields.email}
-                            onChange={(e) => setModalFields({ ...modalFields, email: e.target.value.toLowerCase() })}
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input
-                            label="Phone Number"
-                            name="phone"
-                            placeholder="+1 (555) 000-0000"
-                            value={modalFields.phone}
-                            onChange={(e) => setModalFields({ ...modalFields, phone: e.target.value })}
-                          />
-                          <div className="flex items-center h-full pt-6">
-                            <label className="flex items-center cursor-pointer">
-                              <div className="relative">
-                                <input type="checkbox" className="sr-only" checked={modalFields.isVerified} onChange={(e) => setModalFields({ ...modalFields, isVerified: e.target.checked })} />
-                                <div className={`block w-14 h-8 rounded-full transition-colors ${modalFields.isVerified ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
-                                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${modalFields.isVerified ? 'transform translate-x-6' : ''}`}></div>
-                              </div>
-                              <div className="ml-3 font-medium text-sm text-gray-700">Account Verified</div>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Physical Address"
-                      name="address"
-                      type="textarea"
-                      placeholder="123 Corporate Blvd, Suite 400..."
-                      value={modalFields.address}
-                      onChange={(e) => setModalFields({ ...modalFields, address: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Social Profiles */}
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Social Profiles</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                      <Input
-                        label="LinkedIn URL"
-                        name="linkedin"
-                        placeholder="linkedin.com/company/acme"
-                        value={modalFields.linkedin}
-                        onChange={(e) => setModalFields({ ...modalFields, linkedin: e.target.value })}
-                        className="mb-0"
-                      />
-                      <Input
-                        label="Twitter / X"
-                        name="twitter"
-                        placeholder="twitter.com/acme"
-                        value={modalFields.twitter}
-                        onChange={(e) => setModalFields({ ...modalFields, twitter: e.target.value })}
-                        className="mb-0"
-                      />
-                      <Input
-                        label="Instagram"
-                        name="instagram"
-                        placeholder="instagram.com/acme"
-                        value={modalFields.instagram}
-                        onChange={(e) => setModalFields({ ...modalFields, instagram: e.target.value })}
-                        className="mb-0"
-                      />
-                      <Input
-                        label="Facebook"
-                        name="facebook"
-                        placeholder="facebook.com/acme"
-                        value={modalFields.facebook}
-                        onChange={(e) => setModalFields({ ...modalFields, facebook: e.target.value })}
-                        className="mb-0"
-                      />
-                    </div>
-                  </div>
-
-                </form>
-              )}
-            </div>
-
-            {!modalLoading && (
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-xl">
-                <button
-                  type="button"
-                  className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm"
-                  onClick={() => setModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  form="company-form"
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 transition-all shadow-sm"
-                >
-                  {editData ? 'Save Changes' : 'Register Company'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Custom Confirmation Modal */}
-      {confirmModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-lg shadow-xl outline-none overflow-hidden max-w-md w-full p-6 text-center transform transition-all">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-bold leading-6 text-gray-900 mb-2">Change Status</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?
-            </p>
-            <div className="flex justify-center gap-3">
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editData ? 'Edit Company Profile' : 'Register New Company'}
+        size="xl"
+        footer={
+          !modalLoading && (
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors"
-                onClick={handleCancelToggle}
+                className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm"
+                onClick={() => setModalOpen(false)}
               >
                 Cancel
               </button>
               <button
-                type="button"
-                className="inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm sm:w-auto transition-colors bg-emerald-600 hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                onClick={handleConfirmToggle}
+                type="submit"
+                form="company-form"
+                className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 transition-all shadow-sm"
               >
-                Confirm Update
+                {editData ? 'Save Changes' : 'Register Company'}
               </button>
             </div>
+          )
+        }
+      >
+        {modalLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           </div>
-        </div>
-      )}
+        ) : (
+          <form id="company-form" onSubmit={(e) => { e.preventDefault(); handleModalSubmit(); }} className="space-y-6">
+
+            {/* Profile Registration */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Core Identity</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-1">
+                  <Input
+                    label="Company Logo URL"
+                    name="logo"
+                    type="image" // Use our visual image preview fallback if string given
+                    value={modalFields.logo}
+                    onChange={(e) => setModalFields({ ...modalFields, logo: e.target.value })}
+                  />
+                </div>
+                <div className="lg:col-span-3 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Company Name"
+                      name="name"
+                      placeholder="e.g. Acme Corp"
+                      value={modalFields.name}
+                      onChange={(e) => setModalFields({ ...modalFields, name: e.target.value })}
+                      required
+                    />
+                    <Input
+                      label="Contact Email"
+                      name="email"
+                      type="email"
+                      placeholder="admin@acme.com"
+                      value={modalFields.email}
+                      onChange={(e) => setModalFields({ ...modalFields, email: e.target.value.toLowerCase() })}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Phone Number"
+                      name="phone"
+                      placeholder="+1 (555) 000-0000"
+                      value={modalFields.phone}
+                      onChange={(e) => setModalFields({ ...modalFields, phone: e.target.value })}
+                    />
+                    <div className="flex items-center h-full pt-6">
+                      <label className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only" checked={modalFields.isVerified} onChange={(e) => setModalFields({ ...modalFields, isVerified: e.target.checked })} />
+                          <div className={`block w-14 h-8 rounded-full transition-colors ${modalFields.isVerified ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${modalFields.isVerified ? 'transform translate-x-6' : ''}`}></div>
+                        </div>
+                        <div className="ml-3 font-medium text-sm text-gray-700">Account Verified</div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Input
+                label="Physical Address"
+                name="address"
+                type="textarea"
+                placeholder="123 Corporate Blvd, Suite 400..."
+                value={modalFields.address}
+                onChange={(e) => setModalFields({ ...modalFields, address: e.target.value })}
+              />
+            </div>
+
+            {/* Social Profiles */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Social Profiles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                <Input
+                  label="LinkedIn URL"
+                  name="linkedin"
+                  placeholder="linkedin.com/company/acme"
+                  value={modalFields.linkedin}
+                  onChange={(e) => setModalFields({ ...modalFields, linkedin: e.target.value })}
+                  className="mb-0"
+                />
+                <Input
+                  label="Twitter / X"
+                  name="twitter"
+                  placeholder="twitter.com/acme"
+                  value={modalFields.twitter}
+                  onChange={(e) => setModalFields({ ...modalFields, twitter: e.target.value })}
+                  className="mb-0"
+                />
+                <Input
+                  label="Instagram"
+                  name="instagram"
+                  placeholder="instagram.com/acme"
+                  value={modalFields.instagram}
+                  onChange={(e) => setModalFields({ ...modalFields, instagram: e.target.value })}
+                  className="mb-0"
+                />
+                <Input
+                  label="Facebook"
+                  name="facebook"
+                  placeholder="facebook.com/acme"
+                  value={modalFields.facebook}
+                  onChange={(e) => setModalFields({ ...modalFields, facebook: e.target.value })}
+                  className="mb-0"
+                />
+              </div>
+            </div>
+
+          </form>
+        )}
+      </Modal>
+
+      {/* Confirm Status Change Dialog */}
+      <ConfirmDialog
+        isOpen={confirmModalOpen}
+        onClose={handleCancelToggle}
+        onConfirm={handleConfirmToggle}
+        title="Change Status"
+        message={
+          <>
+            Are you sure you want to change the status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?
+          </>
+        }
+        confirmLabel="Confirm Update"
+      />
     </div>
   );
 };
