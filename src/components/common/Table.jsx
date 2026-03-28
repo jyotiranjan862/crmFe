@@ -1,8 +1,5 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 
-// --------------------
-// Helper: Time formatter
-// --------------------
 const timePassed = (date) => {
   const now = Date.now();
   const past = new Date(date).getTime();
@@ -13,98 +10,295 @@ const timePassed = (date) => {
   return `${Math.floor(diff / 86400)}d ago`;
 };
 
+// --- DropdownIconFilter: Small icon-only dropdown for table header ---
+function DropdownIconFilter({ value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useEffect(() => {
+    if (!open) return;
+    function handle(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+  const selected = options.find(o => o.value === value);
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        style={{
+          background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 22, height: 22,
+        }}
+        title={selected ? selected.label : ''}
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+      >
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#b0b0a8" strokeWidth="2">
+          {/* <circle cx="10" cy="10" r="8" fill="#f8faf7" /> */}
+          <path d="M7 9l3 3 3-3" stroke="#7a7a6c" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 28, right: 0, zIndex: 20,
+          background: '#fff', border: '1px solid #e0e8db', borderRadius: 8,
+          boxShadow: '0 4px 16px 0 rgba(180,190,175,0.13)',
+          minWidth: 110, padding: '0px 0',
+          overflow: 'hidden',
+        }}>
+          {options.map(opt => (
+            <div
+              key={opt.value}
+              style={{
+                padding: '7px 16px', fontSize: 13, color: value === opt.value ? '#65a30d' : '#374140',
+                background: value === opt.value ? '#f3f6f2' : 'none',
+                cursor: 'pointer', fontWeight: value === opt.value ? 600 : 400,
+              }}
+              onClick={() => { setOpen(false); onChange(opt.value); }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --------------------
+// Shared 3D style tokens
+// --------------------
+const s = {
+  panel: {
+    background: "linear-gradient(160deg, #ffffff 0%, #f5f7f4 100%)",
+    borderRadius: "16px",
+    border: "1px solid rgba(200,210,195,0.7)",
+    boxShadow:
+      "0 1px 0 rgba(255,255,255,0.9) inset, 0 -1px 0 rgba(0,0,0,0.06) inset, 0 4px 6px -2px rgba(0,0,0,0.05), 0 12px 28px -6px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08)",
+  },
+  raised: {
+    background: "linear-gradient(175deg, #ffffff 0%, #eff1ee 100%)",
+    borderRadius: "10px",
+    border: "1px solid rgba(180,190,175,0.6)",
+    boxShadow:
+      "0 1px 0 rgba(255,255,255,0.9) inset, 0 -1px 0 rgba(0,0,0,0.06) inset, 0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "#374140",
+    outline: "none",
+    transition: "all 0.15s",
+  },
+  inputBase: {
+    background: "linear-gradient(175deg, #f4f6f3 0%, #ffffff 100%)",
+    borderRadius: "10px",
+    border: "1px solid rgba(180,190,175,0.5)",
+    boxShadow:
+      "0 2px 4px rgba(0,0,0,0.06) inset, 0 1px 0 rgba(255,255,255,0.8)",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    color: "#374140",
+    outline: "none",
+    transition: "all 0.2s",
+  },
+  limeBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    padding: "10px 22px",
+    borderRadius: "11px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#1a3a00",
+    letterSpacing: "0.01em",
+    whiteSpace: "nowrap",
+    border: "none",
+    background: "linear-gradient(160deg, #b5f053 0%, #84cc16 40%, #65a30d 100%)",
+    borderTop: "1px solid rgba(255,255,255,0.45)",
+    boxShadow:
+      "0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 0 rgba(0,0,0,0.15) inset, 0 4px 0 #4d7c0f, 0 5px 6px rgba(74,120,8,0.35), 0 10px 20px rgba(101,163,13,0.20)",
+    transition: "all 0.15s ease",
+  },
+  pgBtn: {
+    padding: "7px 16px",
+    borderRadius: "9px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "12.5px",
+    fontWeight: "500",
+    color: "#374140",
+    border: "none",
+    background: "linear-gradient(175deg, #ffffff 0%, #eff1ee 100%)",
+    borderColor: "rgba(180,190,175,0.6)",
+    borderStyle: "solid",
+    borderWidth: "1px",
+    boxShadow:
+      "0 1px 0 rgba(255,255,255,0.9) inset, 0 -1px 0 rgba(0,0,0,0.06) inset, 0 2px 4px rgba(0,0,0,0.08), 0 2px 0 rgba(0,0,0,0.10)",
+    transition: "all 0.15s",
+  },
+};
+
+const focusStyle = {
+  borderColor: "rgba(132,204,22,0.5)",
+  boxShadow:
+    "0 2px 4px rgba(0,0,0,0.04) inset, 0 0 0 3px rgba(132,204,22,0.12), 0 1px 0 rgba(255,255,255,0.8)",
+};
+const blurStyle = {
+  borderColor: "rgba(180,190,175,0.5)",
+  boxShadow:
+    "0 2px 4px rgba(0,0,0,0.06) inset, 0 1px 0 rgba(255,255,255,0.8)",
+};
+
 // --------------------
 // Built-in Cell Renderers
 // --------------------
 export const CellRenderers = {
   avatar: (value) => (
-    <div className="flex items-center gap-2.5">
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <img
         src={value?.avatar}
         alt={value?.name || ""}
-        className="w-8.5 h-8.5 rounded-full object-cover border-2 border-gray-200 shrink-0"
+        style={{
+          width: 32, height: 32, borderRadius: "50%", objectFit: "cover",
+          border: "2px solid rgba(180,190,175,0.5)", flexShrink: 0,
+        }}
         onError={(e) => {
           e.target.style.display = "none";
           e.target.nextSibling.style.display = "flex";
         }}
       />
-      <span className="hidden w-8.5 h-8.5 rounded-full bg-linear-to-br from-indigo-400 to-purple-600 text-white text-[13px] font-bold items-center justify-center shrink-0">
+      <span
+        style={{
+          display: "none", width: 32, height: 32, borderRadius: "50%",
+          background: "linear-gradient(135deg, #b5f053, #65a30d)",
+          color: "#1a3a00", fontSize: 12, fontWeight: 700,
+          alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}
+      >
         {(value?.name || "?")[0].toUpperCase()}
       </span>
       <div>
-        <div className="font-semibold text-gray-900 text-[13px]">{value?.name || "-"}</div>
-        {value?.sub && <div className="text-[11px] text-gray-400 mt-px">{value.sub}</div>}
+        <div style={{ fontWeight: 600, color: "#374140", fontSize: 13 }}>{value?.name || "-"}</div>
+        {value?.sub && <div style={{ fontSize: 11, color: "#9aaa98", marginTop: 1 }}>{value.sub}</div>}
       </div>
     </div>
   ),
 
   status: (value) => {
     const presets = {
-      active: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
-      inactive: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
-      pending: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
-      error: { bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
-      success: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
-      warning: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
-      info: { bg: "bg-blue-100", text: "text-blue-800", dot: "bg-blue-500" },
+      active: { bg: "linear-gradient(135deg,#dcfce7,#bbf7d0)", color: "#166534", dot: "#22c55e", border: "rgba(134,239,172,0.5)" },
+      inactive: { bg: "linear-gradient(135deg,#f3f4f6,#e5e7eb)", color: "#6b7280", dot: "#9ca3af", border: "rgba(200,205,210,0.6)" },
+      pending: { bg: "linear-gradient(135deg,#fef9c3,#fde68a)", color: "#92400e", dot: "#f59e0b", border: "rgba(252,211,77,0.5)" },
+      error: { bg: "linear-gradient(135deg,#fff1f2,#ffe4e6)", color: "#be123c", dot: "#f43f5e", border: "rgba(252,165,165,0.4)" },
+      success: { bg: "linear-gradient(135deg,#dcfce7,#bbf7d0)", color: "#166534", dot: "#22c55e", border: "rgba(134,239,172,0.5)" },
+      warning: { bg: "linear-gradient(135deg,#fef9c3,#fde68a)", color: "#92400e", dot: "#f59e0b", border: "rgba(252,211,77,0.5)" },
+      info: { bg: "linear-gradient(135deg,#eff6ff,#dbeafe)", color: "#1d4ed8", dot: "#3b82f6", border: "rgba(147,197,253,0.4)" },
     };
     const isObj = typeof value === "object" && value !== null;
     const label = isObj ? value.label : value;
     const key = String(label || "").toLowerCase();
-    const preset = presets[key] || { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" };
-
-    if (isObj && value.bg) {
-      return (
-        <span
-          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide capitalize whitespace-nowrap"
-          style={{ background: value.bg, color: value.color || "#374151" }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: value.dot || value.color || "#6b7280" }} />
-          {label || "-"}
-        </span>
-      );
-    }
-
+    const p = presets[key] || { bg: "linear-gradient(135deg,#f3f4f6,#e5e7eb)", color: "#6b7280", dot: "#9ca3af", border: "rgba(200,205,210,0.6)" };
+    const bg = (isObj && value.bg) ? value.bg : p.bg;
+    const color = (isObj && value.color) ? value.color : p.color;
+    const dot = (isObj && value.dot) ? value.dot : p.dot;
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide capitalize whitespace-nowrap ${preset.bg} ${preset.text}`}>
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${preset.dot}`} />
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+        background: bg, color, border: `1px solid ${p.border}`,
+        boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset, 0 1px 3px rgba(0,0,0,0.07)",
+        whiteSpace: "nowrap",
+      }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: "50%", background: dot,
+          flexShrink: 0, boxShadow: `0 0 0 2px ${dot}33`,
+        }} />
         {label || "-"}
       </span>
     );
   },
 
   image: (value) => (
-    <img
-      src={value}
-      alt=""
-      className="w-10 h-10 rounded-lg object-cover border border-gray-200"
-    />
+    <img src={value} alt="" style={{
+      width: 40, height: 40, borderRadius: 8, objectFit: "cover",
+      border: "1px solid rgba(180,190,175,0.5)",
+    }} />
   ),
 
   badge: (value) => {
     const items = Array.isArray(value) ? value : [value];
     return (
-      <div className="flex gap-1 flex-wrap">
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {items.map((v, i) => (
-          <span key={i} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">
-            {v}
-          </span>
+          <span key={i} style={{
+            padding: "2px 8px", borderRadius: 6,
+            background: "linear-gradient(135deg,#f0f4ee,#e8ede6)",
+            color: "#4b5945", fontSize: 11, fontWeight: 500,
+            border: "1px solid rgba(180,190,175,0.5)",
+            boxShadow: "0 1px 0 rgba(255,255,255,0.8) inset",
+          }}>{v}</span>
         ))}
       </div>
     );
   },
 
   progress: (value) => (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-15">
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${value > 70 ? "bg-emerald-500" : value > 40 ? "bg-amber-500" : "bg-red-500"}`}
-          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-        />
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{
+        flex: 1, height: 6, background: "rgba(180,190,175,0.3)", borderRadius: 99,
+        overflow: "hidden", minWidth: 60,
+        boxShadow: "0 1px 2px rgba(0,0,0,0.08) inset",
+      }}>
+        <div style={{
+          height: "100%", borderRadius: 99, transition: "width 0.3s",
+          width: `${Math.min(100, Math.max(0, value))}%`,
+          background: value > 70
+            ? "linear-gradient(90deg,#84cc16,#65a30d)"
+            : value > 40
+              ? "linear-gradient(90deg,#f59e0b,#d97706)"
+              : "linear-gradient(90deg,#f87171,#ef4444)",
+        }} />
       </div>
-      <span className="text-[11px] text-gray-500 min-w-7">{value}%</span>
+      <span style={{ fontSize: 11, color: "#9aaa98", minWidth: 28 }}>{value}%</span>
     </div>
   ),
+};
+
+// --------------------
+// Action button variants
+// --------------------
+const actionBtnStyle = (variant) => {
+  const map = {
+    danger: {
+      background: "linear-gradient(160deg,#fff1f2,#ffe4e6)",
+      border: "1px solid rgba(252,165,165,0.4)",
+      color: "#dc2626",
+      boxShadow: "0 1px 0 rgba(255,255,255,0.7) inset, 0 2px 3px rgba(220,38,38,0.08), 0 2px 0 rgba(220,38,38,0.15)",
+    },
+    info: {
+      background: "linear-gradient(160deg,#eff6ff,#dbeafe)",
+      border: "1px solid rgba(147,197,253,0.4)",
+      color: "#1d4ed8",
+      boxShadow: "0 1px 0 rgba(255,255,255,0.7) inset, 0 2px 3px rgba(37,99,235,0.08), 0 2px 0 rgba(37,99,235,0.15)",
+    },
+    default: {
+      background: "linear-gradient(160deg,#f0fce8,#dcfce7)",
+      border: "1px solid rgba(134,239,172,0.4)",
+      color: "#15803d",
+      boxShadow: "0 1px 0 rgba(255,255,255,0.7) inset, 0 2px 3px rgba(22,101,52,0.08), 0 2px 0 rgba(22,101,52,0.15)",
+    },
+  };
+  return {
+    width: 24, height: 24, borderRadius: 6, cursor: "pointer",
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    transition: "all 0.15s",
+    fontSize: 14,
+    ...(map[variant] || map.default),
+  };
 };
 
 // --------------------
@@ -131,6 +325,8 @@ const Table = ({
   onRowClick,
   pageSizes = [5, 10, 20, 50],
   height = "65vh",
+  onAdd,
+  addLabel = "Add",
 }) => {
   const [internalSearchText, setInternalSearchText] = useState("");
   const [internalSearchKey, setInternalSearchKey] = useState(searchKeys[0] || "");
@@ -162,214 +358,367 @@ const Table = ({
     if (header.render) return header.render(raw, row);
 
     let displayValue = raw;
-
-    if (header.valueMap && header.valueMap[raw] !== undefined) {
-      displayValue = header.valueMap[raw];
-    }
-
-    if (header.type && CellRenderers[header.type]) {
-      return CellRenderers[header.type](displayValue, row);
-    }
+    if (header.valueMap && header.valueMap[raw] !== undefined) displayValue = header.valueMap[raw];
+    if (header.type && CellRenderers[header.type]) return CellRenderers[header.type](displayValue, row);
     if (displayValue === null || displayValue === undefined || displayValue === "") {
-      return <span className="text-gray-300">—</span>;
+      return <span style={{ color: "#c5cebd" }}>—</span>;
     }
-
     if (header.format === "number") return Number(displayValue).toLocaleString();
     if (header.format === "currency") return Number(displayValue).toLocaleString("en-US", { style: "currency", currency: header.currency || "USD" });
     if (header.format === "date") return new Date(displayValue).toLocaleDateString();
     if (header.format === "datetime") return new Date(displayValue).toLocaleString();
-
     return String(displayValue);
   }, []);
 
   const visibleHeaders = headers.filter(h => h.label?.toLowerCase() !== "permissions");
   const colSpan = visibleHeaders.length + 2 + (hasActions ? 1 : 0);
-
   const start = total > 0 ? (page - 1) * pageSize + 1 : 0;
   const end = Math.min(page * pageSize, total);
-
   const hasSearch = onSearch || onSearchTextChange || searchKeys.length > 0;
 
   return (
-    <div className="space-y-3">
-      {/* Search bar — separate card above the table */}
-      {hasSearch && (
-        <div className="flex items-center gap-2 flex-wrap bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-          {searchKeys.length > 0 && (
-            <select
-              value={computedSearchKey}
-              onChange={handleSearchKeyChange}
-              className="border border-gray-200 rounded-lg px-2.5 py-1.75 text-xs text-gray-700 bg-gray-50 outline-none cursor-pointer"
-            >
-              {searchKeys.map((key) => {
-                const header = headers.find((h) => h.key === key);
-                return <option key={key} value={key}>{header?.label || key}</option>;
-              })}
-            </select>
-          )}
-          <div className="relative flex items-center">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={computedSearchText}
-              onChange={handleSearchTextChange}
-              className="border border-gray-200 rounded-lg pl-8 pr-3 py-1.75 text-xs text-gray-900 bg-gray-50 outline-none w-55 transition focus:border-gray-400 focus:ring-1 focus:ring-gray-300 focus:bg-white"
-            />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* ── Toolbar panel ── */}
+      {(hasSearch || onAdd) && (
+        <div style={{
+          ...s.panel,
+          padding: "14px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          position: "relative",
+        }}>
+          {/* Gloss overlay */}
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 16,
+            background: "linear-gradient(180deg,rgba(255,255,255,0.45) 0%,transparent 40%)",
+            pointerEvents: "none",
+          }} />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", position: "relative" }}>
+            {searchKeys.length > 0 && (
+              <select
+                value={computedSearchKey}
+                onChange={handleSearchKeyChange}
+                style={{ ...s.raised, padding: "9px 14px" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.9) inset, 0 4px 8px rgba(0,0,0,0.10)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = s.raised.boxShadow; }}
+              >
+                {searchKeys.map((key) => {
+                  const header = headers.find((h) => h.key === key);
+                  return <option key={key} value={key}>{header?.label || key}</option>;
+                })}
+              </select>
+            )}
+
+            {/* Divider */}
+            {searchKeys.length > 0 && (
+              <div style={{ width: 1, height: 26, background: "linear-gradient(to bottom, transparent, rgba(180,190,175,0.5) 30%, rgba(180,190,175,0.5) 70%, transparent)" }} />
+            )}
+
+            <div style={{ position: "relative" }}>
+              <svg style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#9aaa98", pointerEvents: "none" }}
+                width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="6.5" cy="6.5" r="4.5" /><path d="M10 10l3 3" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={computedSearchText}
+                onChange={handleSearchTextChange}
+                style={{ ...s.inputBase, padding: "9px 14px 9px 34px", width: 200 }}
+                onFocus={e => Object.assign(e.target.style, focusStyle)}
+                onBlur={e => Object.assign(e.target.style, blurStyle)}
+              />
+            </div>
           </div>
+
+          {onAdd && (
+            <button
+              onClick={onAdd}
+              style={{ ...s.limeBtn, position: "relative" }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 0 rgba(0,0,0,0.15) inset, 0 5px 0 #4d7c0f, 0 7px 10px rgba(74,120,8,0.40), 0 14px 24px rgba(101,163,13,0.22)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = "";
+                e.currentTarget.style.boxShadow = s.limeBtn.boxShadow;
+              }}
+              onMouseDown={e => {
+                e.currentTarget.style.transform = "translateY(3px)";
+                e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.12) inset, 0 1px 0 rgba(255,255,255,0.25) inset, 0 1px 0 #4d7c0f";
+              }}
+              onMouseUp={e => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.4) inset, 0 5px 0 #4d7c0f, 0 7px 10px rgba(74,120,8,0.40)";
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M8 3v10M3 8h10" />
+              </svg>
+              {addLabel}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Table card */}
-      <div
-        className="bg-white rounded-lg shadow-xl border border-gray-100 overflow-auto scrollbar-hide"
-        style={{ height, maxHeight: height }}
-      >
-        <table className="min-w-full divide-y divide-gray-200 text-[13px]">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 tracking-wide uppercase bg-purple-100 w-10">
-                #
-              </th>
-              {visibleHeaders.map((h, i) => (
-                <th key={i} className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <span>{h.label || h.key}</span>
-                    {h.filter && (
-                      <select
-                        className="border border-gray-200 rounded px-1.5 py-0.5 text-[11px] text-gray-700 bg-white outline-none cursor-pointer"
-                        value={h.filter.value}
-                        onChange={(e) => h.filter.onChange(e.target.value)}
-                      >
-                        {h.filter.options.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </th>
-              ))}
-              <th className="sticky top-0 z-10 px-2 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
-                Time
-              </th>
-              {hasActions && (
-                <th className="sticky top-0 z-10 px-2 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider bg-purple-100 whitespace-nowrap">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
-              <tr>
-                <td colSpan={colSpan} className="px-4 py-12 text-center">
-                  <div className="flex flex-col gap-2.5 py-2 items-stretch max-w-md mx-auto">
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="h-4.5 rounded-md bg-gray-100 animate-pulse w-full" style={{ animationDelay: `${i * 150}ms` }} />
-                    ))}
-                  </div>
-                </td>
+      {/* ── Table panel ── */}
+      <div style={{
+        ...s.panel,
+        overflow: "hidden",
+        height,
+        maxHeight: height,
+        display: "flex",
+        flexDirection: "column",
+        marginBottom: "0.5vh",
+      }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+
+            {/* Header */}
+            {/* <thead>
+              <tr style={{
+                // background: "linear-gradient(to bottom, #f0f4ee, #e8ede6)",
+                // borderBottom: "1px solid rgba(200,210,195,0.6)",
+              }}>
+                <th style={thStyle}>#</th>
+                {visibleHeaders.map((h, i) => (
+                  <th key={i} style={thStyle}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{h.label || h.key}</span>
+                      {h.filter && (
+                        <select
+                          style={{
+                            ...s.raised,
+                            padding: "3px 8px 3px 6px",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            color: "#6b7a68",
+                          }}
+                          value={h.filter.value}
+                          onChange={(e) => h.filter.onChange(e.target.value)}
+                        >
+                          {h.filter.options.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </th>
+                ))}
+                <th style={thStyle}>Time</th>
+                {hasActions && (
+                  <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
+                )}
               </tr>
-            ) : values.length === 0 ? (
+            </thead> */}
+
+            <thead>
               <tr>
-                <td colSpan={colSpan} className="px-4 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" className="mb-2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" />
-                    </svg>
-                    <div className="text-gray-400 text-[13px]">{emptyMessage}</div>
-                  </div>
-                </td>
+                <th style={thStyle}>#</th>
+                {visibleHeaders.map((h, i) => (
+                  <th key={i} style={thStyle}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, position: 'relative' }}>
+                      <span>{h.label || h.key}</span>
+                      {h.filter && (
+                        <DropdownIconFilter
+                          value={h.filter.value}
+                          options={h.filter.options}
+                          onChange={h.filter.onChange}
+                        />
+                      )}
+                    </div>
+                  </th>
+                ))}
+                {hasActions && (
+                  <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
+                )}
               </tr>
-            ) : (
-              values.map((row, idx) => (
-                <tr
-                  key={row._id || idx}
-                  onClick={() => onRowClick && onRowClick(row, idx)}
-                  className={`hover:bg-gray-100 transition ${onRowClick ? "cursor-pointer" : ""}`}
-                >
-                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-900 align-middle">
-                    {serialNumber(idx)}
+            </thead>
+
+            {/* Body */}
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={colSpan} style={{ padding: "48px 16px", textAlign: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 400, margin: "0 auto" }}>
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} style={{
+                          height: 16, borderRadius: 8,
+                          background: "linear-gradient(90deg, #f0f4ee 25%, #e4ebe0 50%, #f0f4ee 75%)",
+                          backgroundSize: "200% 100%",
+                          animation: `shimmer 1.4s ${i * 0.15}s infinite`,
+                        }} />
+                      ))}
+                    </div>
                   </td>
-                  {visibleHeaders.map((header, hidx) => (
-                    <td key={hidx} className="px-2 py-1 whitespace-nowrap text-xs text-gray-900 align-middle">
-                      {renderCell(row, header)}
-                    </td>
-                  ))}
-                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-400 align-middle">
-                    {row.time ? timePassed(row.time) : <span className="text-gray-300">—</span>}
-                  </td>
-                  {hasActions && (
-                    <td className="px-2 py-1 text-right align-middle">
-                      <div className="flex gap-1.5 justify-end flex-wrap">
-                        {actions.map((action, aidx) => (
-                          <button
-                            key={action.key || aidx}
-                            className={`px-3 py-1 rounded-md border text-xs font-medium whitespace-nowrap transition cursor-pointer ${action.variant === "danger"
-                              ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100"
-                              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                              }`}
-                            onClick={(e) => { e.stopPropagation(); action.onClick(row); }}
-                            title={action.label}
-                          >
-                            {action.icon || action.label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  )}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : values.length === 0 ? (
+                <tr>
+                  <td colSpan={colSpan} style={{ padding: "48px 16px", textAlign: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(180,190,175,0.8)" strokeWidth="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" />
+                      </svg>
+                      <div style={{ color: "#9aaa98", fontSize: 13 }}>{emptyMessage}</div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                values.map((row, idx) => (
+                  <tr
+                    key={row._id || idx}
+                    onClick={() => onRowClick && onRowClick(row, idx)}
+                    style={{
+                      // borderBottom: "1px solid rgba(200,210,195,0.35)",
+                      transition: "background 0.15s",
+                      cursor: onRowClick ? "pointer" : "default",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(180,220,100,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ""; }}
+                  >
+                    <td style={{ ...tdStyle, color: "#9aaa98", fontSize: 12, fontWeight: 500 }}>
+                      {serialNumber(idx)}
+                    </td>
+                    {visibleHeaders.map((header, hidx) => (
+                      <td key={hidx} style={tdStyle}>
+                        {renderCell(row, header)}
+                      </td>
+                    ))}
+                    {hasActions && (
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                          {actions.map((action, aidx) => (
+                            <button
+                              key={action.key || aidx}
+                              style={actionBtnStyle(action.variant)}
+                              onClick={(e) => { e.stopPropagation(); action.onClick(row); }}
+                              title={action.label}
+                              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.transform = ""; }}
+                              onMouseDown={e => { e.currentTarget.style.transform = "translateY(2px)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.1) inset"; }}
+                              onMouseUp={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = actionBtnStyle(action.variant).boxShadow; }}
+                            >
+                              {action.icon || action.label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
       </div>
 
-      {/* Pagination footer — separate card below the table */}
-      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-xl">
-        <div className="flex items-center space-x-3 text-sm text-gray-700">
-          <div>Rows per page:</div>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-            className="w-20 h-8 text-sm px-2 py-1 rounded-md border border-gray-200 bg-white outline-none cursor-pointer"
-          >
-            {pageSizes.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <div className="text-sm text-gray-500">
-            {total === 0
-              ? "Showing 0 of 0"
-              : `Showing ${start} - ${end} of ${total}`
-            }
+      {/* ── Footer panel ── */}
+      <div style={{
+        ...s.panel,
+        padding: "14px 18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 10,
+        background: "linear-gradient(to bottom, #f5f7f4, #f0f2ef)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12.5, color: "#6b7a68", fontWeight: 500 }}>Rows per page:</span>
+          <div style={{ position: "relative" }}>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+              style={{
+                ...s.raised,
+                padding: "6px 28px 6px 10px",
+                fontSize: 12.5,
+                appearance: "none",
+                WebkitAppearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7a68' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+                backgroundSize: "10px",
+              }}
+            >
+              {pageSizes.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
+          <span style={{ fontSize: 12.5, color: "#9aaa98" }}>
+            {total === 0 ? "Showing 0 of 0" : `Showing ${start} – ${end} of ${total}`}
+          </span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             disabled={page <= 1}
             onClick={() => onPageChange?.(Math.max(1, page - 1))}
-            className="px-3 py-1 rounded border bg-white shadow-sm hover:shadow disabled:opacity-40 text-sm cursor-pointer disabled:cursor-not-allowed"
+            style={{ ...s.pgBtn, opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? "not-allowed" : "pointer" }}
+            onMouseEnter={e => { if (page > 1) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.9) inset, 0 4px 6px rgba(0,0,0,0.10), 0 3px 0 rgba(0,0,0,0.12)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = s.pgBtn.boxShadow; }}
+            onMouseDown={e => { if (page > 1) { e.currentTarget.style.transform = "translateY(2px)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.1) inset"; } }}
+            onMouseUp={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = s.pgBtn.boxShadow; }}
           >
             Prev
           </button>
-          <div className="text-sm">
+          <span style={{ fontSize: 12.5, color: "#6b7a68", fontWeight: 500, padding: "0 4px" }}>
             Page {page} / {totalPages}
-          </div>
+          </span>
           <button
             disabled={page >= totalPages}
             onClick={() => onPageChange?.(Math.min(totalPages, page + 1))}
-            className="px-3 py-1 rounded border bg-white shadow-sm hover:shadow disabled:opacity-40 text-sm cursor-pointer disabled:cursor-not-allowed"
+            style={{ ...s.pgBtn, opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? "not-allowed" : "pointer" }}
+            onMouseEnter={e => { if (page < totalPages) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.9) inset, 0 4px 6px rgba(0,0,0,0.10), 0 3px 0 rgba(0,0,0,0.12)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = s.pgBtn.boxShadow; }}
+            onMouseDown={e => { if (page < totalPages) { e.currentTarget.style.transform = "translateY(2px)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.1) inset"; } }}
+            onMouseUp={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = s.pgBtn.boxShadow; }}
           >
             Next
           </button>
         </div>
       </div>
+
     </div>
   );
+};
+
+// --------------------
+// Shared cell styles
+// --------------------
+const thStyle = {
+  padding: "6px 10px",
+  textAlign: "left",
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#848482",
+  // background: "linear-gradient(180deg, #f3f6f2 80%, #e6ede6 100%)",
+  background: 'linear-gradient(180deg, #ffffff 0%, #eff1ee 100%)',
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+  minHeight: 36,
+  // borderBottom: "2px solid #d1e7dd",
+  boxShadow: "0 2px 6px 0 rgba(180,190,175,0.07)",
+};
+
+const tdStyle = {
+  padding: "7px 10px",
+  color: "#374140",
+  verticalAlign: "middle",
+  whiteSpace: "nowrap",
+  fontSize: 12,
+  minHeight: 28,
 };
 
 export default React.memo(Table);

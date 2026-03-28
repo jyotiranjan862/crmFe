@@ -51,7 +51,7 @@ const MainLayout = ({ children }) => {
 		>
 			{/* Header */}
 			<header
-				className="bg-transparent shrink-0 flex items-center justify-between px-6 h-16"
+				className="bg-transparent shrink-0 flex items-center justify-between px-8 h-16"
 				style={{ boxShadow: "0 1px 6px 0 rgb(0 0 0 / 0.06)" }}
 			>
 				{/* Left: Branding + Tabs */}
@@ -75,7 +75,16 @@ const MainLayout = ({ children }) => {
 								left: indicator.left,
 								width: indicator.width,
 								height: "calc(100% - 10px)",
-								boxShadow: "0 4px 12px 0 rgb(163 230 53 / 0.4), 0 8px 20px 0 rgb(163 230 53 / 0.2), 0 0 1px 0 rgb(0 0 0 / 0.08)",
+								backgroundImage: "linear-gradient(to bottom, #bef264 0%, #a3e635 45%, #84cc16 100%)",
+								boxShadow:
+									"0 1px 0 0 rgba(255,255,255,0.55) inset, " +
+									"0 -1px 0 0 rgba(0,0,0,0.18) inset, " +
+									"1px 0 0 0 rgba(255,255,255,0.12) inset, " +
+									"-1px 0 0 0 rgba(255,255,255,0.08) inset, " +
+									"0 2px 6px 0 rgba(132,204,22,0.55), " +
+									"0 6px 16px 0 rgba(132,204,22,0.30), " +
+									"0 12px 28px 0 rgba(132,204,22,0.15), " +
+									"0 1px 2px 0 rgba(0,0,0,0.22)",
 								transition: "left 0.22s cubic-bezier(0.4,0,0.2,1), width 0.22s cubic-bezier(0.4,0,0.2,1)",
 							}}
 						/>
@@ -142,8 +151,8 @@ const MainLayout = ({ children }) => {
 			</header>
 
 			{/* Main content */}
-			<main className="flex-1 overflow-auto p-6 bg-white">
-				<div className="max-w-7xl mx-auto">
+			<main className="flex-1 overflow-auto px-6 py-3 bg-white">
+				<div className="max-w-10xl mx-auto">
 					{ActiveComponent ? <ActiveComponent /> : children}
 				</div>
 			</main>
