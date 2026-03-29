@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import useFeedback from "../hooks/useFeedback";
 import { TbLogout } from "react-icons/tb";
 import { useAuth } from "../context/AuthContext";
 import adminRoutes from "../routes/adminRoutes";
@@ -12,6 +13,8 @@ const layoutConfig = {
 };
 
 const MainLayout = ({ children }) => {
+	const { fire } = useFeedback();
+	const hapticTab = () => fire({ haptic: [{ duration: 30 }, { delay: 60, duration: 40, intensity: 1 }], sound: true });
 	const { user, userType, permissions, logout } = useAuth();
 	const config = layoutConfig[userType] || layoutConfig.admin;
 	const routes = userType === "employee" ? getEmployeeRoutes(permissions) : config.routes;
@@ -96,7 +99,7 @@ const MainLayout = ({ children }) => {
 								<button
 									key={index}
 									ref={(el) => (tabRefs.current[index] = el)}
-									onClick={() => setActiveTabIndex(index)}
+									onClick={() => { hapticTab(); setActiveTabIndex(index); }}
 									className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium whitespace-nowrap cursor-pointer transition-colors duration-150 outline-none ${isActive ? "text-slate-950" : "text-slate-500 hover:text-slate-700"
 										}`}
 								>
