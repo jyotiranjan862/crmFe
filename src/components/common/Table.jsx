@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 const timePassed = (date) => {
   const now = Date.now();
@@ -330,6 +331,8 @@ const Table = ({
 }) => {
   const [internalSearchText, setInternalSearchText] = useState("");
   const [internalSearchKey, setInternalSearchKey] = useState(searchKeys[0] || "");
+  const { trigger } = useWebHaptics();
+  const hapticTap = () => trigger([{ duration: 30 }, { delay: 60, duration: 40, intensity: 1 }]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
   const computedSearchText = searchText ?? internalSearchText;
@@ -438,7 +441,7 @@ const Table = ({
 
           {onAdd && (
             <button
-              onClick={onAdd}
+              onClick={() => { hapticTap(); onAdd(); }}
               style={{ ...s.limeBtn, position: "relative" }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = "translateY(-1px)";
@@ -599,7 +602,7 @@ const Table = ({
                             <button
                               key={action.key || aidx}
                               style={actionBtnStyle(action.variant)}
-                              onClick={(e) => { e.stopPropagation(); action.onClick(row); }}
+                              onClick={(e) => { e.stopPropagation(); hapticTap(); action.onClick(row); }}
                               title={action.label}
                               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
                               onMouseLeave={e => { e.currentTarget.style.transform = ""; }}

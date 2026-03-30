@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import useFeedback from "../../hooks/useFeedback";
 // Helper to show relative time in words
 function timeAgo(date) {
   const now = new Date();
@@ -36,6 +37,7 @@ const statusOptions = [
 const Permissions = () => {
   const [values, setValues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { fire } = useFeedback();
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -154,6 +156,7 @@ const Permissions = () => {
     }
   };
 
+  const hapticTap = () => fire({ haptic: [{ duration: 30 }, { delay: 60, duration: 40, intensity: 1 }], sound: true });
   // Table headers with filter for status and searchable keys
   const tableHeaders = [
     { key: 'name', label: 'Name', searchable: true },
@@ -181,23 +184,20 @@ const Permissions = () => {
       key: 'edit',
       label: 'Edit',
       icon: EditIcon,
-      onClick: row => handleRowAction('edit', row),
+      onClick: row => { hapticTap(); handleRowAction('edit', row); },
     },
     {
       key: 'status',
       label: 'Toggle Status',
       icon: StatusIcon,
-      onClick: row => {
-        setRowToToggle(row);
-        setConfirmModalOpen(true);
-      },
+      onClick: row => { hapticTap(); setRowToToggle(row); setConfirmModalOpen(true); },
     },
     {
       key: 'delete',
       label: 'Delete',
       icon: DeleteIcon,
       variant: 'danger',
-      onClick: row => handleRowAction('delete', row),
+      onClick: row => { hapticTap(); handleRowAction('delete', row); },
     }
   ];
 
@@ -306,7 +306,7 @@ const Permissions = () => {
         </div>
 
         <button
-          onClick={handleAdd}
+          onClick={() => { hapticTap(); handleAdd(); }}
           style={{
             display: 'flex',
             alignItems: 'center',
