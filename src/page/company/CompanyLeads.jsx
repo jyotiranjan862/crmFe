@@ -4,7 +4,8 @@ import Input from '../../components/common/Input';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
 import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
-import { getLeads, createLead, updateLead, getCampaignsByCompany } from '../../api/campigneAndLeadApi';
+import { getLeads, createLead, updateLead, getCampaignsByCompany, fetchLeadPipeline, fetchActivityTimeline, fetchLeadInsights } from '../../api/campigneAndLeadApi';
+import { AddButton } from '../../components/common/Table';
 
 const LEAD_STATUSES = [
   { value: 'created', label: 'Created', color: 'bg-blue-100 text-blue-700' },
@@ -23,6 +24,123 @@ const EditIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><pa
 const NotesIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>;
 const ArchiveIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
 
+const LeadLifecyclePipeline = () => {
+  const [pipelineData, setPipelineData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPipeline = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchLeadPipeline();
+        setPipelineData(data);
+      } catch (error) {
+        console.error('Error fetching pipeline data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPipeline();
+  }, []);
+
+  return (
+    <div className="p-4 border rounded bg-white">
+      <h2 className="text-lg font-bold mb-4">Lead Lifecycle Pipeline</h2>
+      {loading ? (
+        <p>Loading pipeline...</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-4">
+          {pipelineData.map((stage) => (
+            <div key={stage.stage} className="p-4 border rounded bg-gray-50">
+              <h3 className="text-md font-semibold mb-2">{stage.stage}</h3>
+              <p className="text-sm text-gray-600">{stage.count} Leads</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ActivityTimeline = () => {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadActivities = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchActivityTimeline();
+        setActivities(data);
+      } catch (error) {
+        console.error('Error fetching activity timeline:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivities();
+  }, []);
+
+  return (
+    <div className="p-4 border rounded bg-white">
+      <h2 className="text-lg font-bold mb-4">Activity Timeline</h2>
+      {loading ? (
+        <p>Loading activities...</p>
+      ) : (
+        <ul className="space-y-4">
+          {activities.map((activity, index) => (
+            <li key={index} className="p-2 border rounded bg-gray-50">
+              <p className="text-sm text-gray-600">{activity.description}</p>
+              <p className="text-xs text-gray-400">{new Date(activity.timestamp).toLocaleString()}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const LeadIntelligenceEngine = () => {
+  const [insights, setInsights] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadInsights = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchLeadInsights();
+        setInsights(data);
+      } catch (error) {
+        console.error('Error fetching lead insights:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInsights();
+  }, []);
+
+  return (
+    <div className="p-4 border rounded bg-white">
+      <h2 className="text-lg font-bold mb-4">AI Lead Intelligence</h2>
+      {loading ? (
+        <p>Loading insights...</p>
+      ) : (
+        <ul className="space-y-4">
+          {insights.map((insight, index) => (
+            <li key={index} className="p-2 border rounded bg-gray-50">
+              <p className="text-sm text-gray-600">{insight.message}</p>
+              <p className="text-xs text-gray-400">Confidence: {insight.confidence}%</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const CompanyLeads = () => {
   const { user } = useAuth();
   const [values, setValues] = useState([]);
@@ -40,7 +158,8 @@ const CompanyLeads = () => {
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
 
-  const initialFields = { campigne: '', status: 'created', nextMeetingDate: '', note: '' };
+  // Add type: 'campaign' | 'thirdparty'
+  const initialFields = { type: 'campaign', campigne: '', status: 'created', name: '', phone: '', organization: '', email: '', nextMeetingDate: '', note: '' };
   const [modalFields, setModalFields] = useState(initialFields);
 
   const [page, setPage] = useState(1);
@@ -81,14 +200,37 @@ const CompanyLeads = () => {
   const handleSubmit = async () => {
     setModalLoading(true);
     try {
+      // Validation
+      if (modalFields.type === 'campaign') {
+        if (!modalFields.campigne) {
+          alert('Please select a campaign.');
+          setModalLoading(false);
+          return;
+        }
+        if (!modalFields.name.trim() || !modalFields.phone.trim() || !modalFields.organization.trim() || !modalFields.note.trim()) {
+          alert('Name, Phone, Organization, and Note are required.');
+          setModalLoading(false);
+          return;
+        }
+      } else if (modalFields.type === 'thirdparty') {
+        if (!modalFields.name.trim() || !modalFields.phone.trim() || !modalFields.organization.trim() || !modalFields.note.trim()) {
+          alert('Name, Phone, Organization, and Note are required.');
+          setModalLoading(false);
+          return;
+        }
+      }
       const payload = {
         company: user._id,
-        campigne: modalFields.campigne || null,
         status: modalFields.status,
+        name: modalFields.name,
+        phone: modalFields.phone,
+        organization: modalFields.organization,
+        email: modalFields.email,
         nextMeetingDate: modalFields.nextMeetingDate || null,
+        notes: modalFields.note.trim() ? [{ text: modalFields.note.trim() }] : [],
       };
-      if (modalFields.note.trim()) {
-        payload.notes = [{ text: modalFields.note.trim() }];
+      if (modalFields.type === 'campaign') {
+        payload.campigne = modalFields.campigne;
       }
       if (editData) {
         await updateLead(editData._id, payload);
@@ -144,29 +286,53 @@ const CompanyLeads = () => {
   const statusSelectOptions = LEAD_STATUSES.map(s => ({ value: s.value, label: s.label }));
 
   const tableHeaders = [
-    { key: 'campigne', label: 'Campaign', render: v => v?.title || <span className="text-xs text-gray-400">—</span> },
     {
-      key: 'status', label: 'Status',
-      filter: { options: statusFilterOptions, value: filterStatus, onChange: v => { setFilterStatus(v); setPage(1); } },
-      render: v => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLOR_MAP[v] || 'bg-gray-100 text-gray-500'}`}>
-          {STATUS_LABEL_MAP[v] || v}
-        </span>
-      ),
+      key: 'campigne',
+      label: <span title="Campaign"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#6366f1" strokeWidth="2" d="M4 7h16M4 12h16M4 17h16" /></svg>Camp.</span>,
+      render: v => v?.title || <span className="text-xs text-gray-400">—</span>
     },
     {
-      key: 'nextMeetingDate', label: 'Next Meeting',
+      key: 'name',
+      label: <span title="Lead Name"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" className="inline mr-1"><circle cx="12" cy="8" r="4" stroke="#0ea5e9" strokeWidth="2" /><path stroke="#0ea5e9" strokeWidth="2" d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>Name</span>,
+      render: v => v || <span className="text-xs text-gray-400">—</span>
+    },
+    {
+      key: 'phone',
+      label: <span title="Phone"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#10b981" strokeWidth="2" d="M22 16.92V21a1 1 0 0 1-1.09 1A19.91 19.91 0 0 1 3 5.09 1 1 0 0 1 4 4h4.09a1 1 0 0 1 1 .75l1.1 4.4a1 1 0 0 1-.29 1L8.21 12.21a16 16 0 0 0 7.58 7.58l2.06-2.06a1 1 0 0 1 1-.29l4.4 1.1a1 1 0 0 1 .75 1V21z" /></svg>Phone</span>,
+      render: v => v || <span className="text-xs text-gray-400">—</span>
+    },
+    {
+      key: 'notes',
+      label: <span title="Notes"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f59e42" strokeWidth="2" /><path stroke="#f59e42" strokeWidth="2" d="M8 8h8M8 12h8M8 16h4" /></svg>Notes</span>,
+      render: v => <span className="text-xs text-gray-500">{Array.isArray(v) ? `${v.length} note${v.length !== 1 ? 's' : ''}` : '—'}</span>
+    },
+    {
+      key: 'aiDescription',
+      label: <span title="Description (AI)"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#a21caf" strokeWidth="2" d="M12 20v-6m0 0V4m0 10H6m6 0h6" /></svg>Desc.</span>,
+      render: v => v ? <span className="text-xs text-gray-700">{v}</span> : <span className="text-xs text-gray-400">—</span>
+    },
+    {
+      key: 'salesPerson',
+      label: <span title="Salesperson"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><circle cx="12" cy="8" r="4" stroke="#f43f5e" strokeWidth="2" /><path stroke="#f43f5e" strokeWidth="2" d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>Sales</span>,
+      render: v => v?.name || <span className="text-xs text-gray-400">—</span>
+    },
+    {
+      key: 'createdAt',
+      label: <span title="Created"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#6366f1" strokeWidth="2" d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" stroke="#6366f1" strokeWidth="2" /></svg>Created</span>,
+      format: 'date'
+    },
+    {
+      key: 'nextMeetingDate',
+      label: <span title="Next Meeting"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#10b981" strokeWidth="2" /><path stroke="#10b981" strokeWidth="2" d="M16 2v4M8 2v4M3 10h18" /></svg>Next Mtg</span>,
       render: v => v
         ? <span className="text-xs font-medium text-emerald-700">{new Date(v).toLocaleDateString()}</span>
-        : <span className="text-xs text-gray-400">—</span>,
+        : <span className="text-xs text-gray-400">—</span>
     },
-    {
-      key: 'notes', label: 'Notes',
-      render: v => <span className="text-xs text-gray-500">{Array.isArray(v) ? `${v.length} note${v.length !== 1 ? 's' : ''}` : '—'}</span>,
-    },
-    { key: 'createdAt', label: 'Created', format: 'date' },
   ];
 
+  const CallUploadIcon = (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#6366f1" strokeWidth="2" d="M12 20v-6m0 0V4m0 10H6m6 0h6" /><path stroke="#0ea5e9" strokeWidth="2" d="M22 16.92V21a1 1 0 0 1-1.09 1A19.91 19.91 0 0 1 3 5.09 1 1 0 0 1 4 4h4.09a1 1 0 0 1 1 .75l1.1 4.4a1 1 0 0 1-.29 1L8.21 12.21a16 16 0 0 0 7.58 7.58l2.06-2.06a1 1 0 0 1 1-.29l4.4 1.1a1 1 0 0 1 .75 1V21z" /></svg>
+  );
   const actions = [
     {
       key: 'edit', label: 'Edit', icon: EditIcon,
@@ -185,29 +351,57 @@ const CompanyLeads = () => {
       key: 'notes', label: 'View Notes', icon: NotesIcon,
       onClick: row => { setDetailLead(row); setNoteText(''); },
     },
+    {
+      key: 'callupload',
+      label: 'Upload Call',
+      icon: CallUploadIcon,
+      onClick: row => {
+        setUploadingLeadId(row._id);
+        setTimeout(() => fileInputRef.current?.click(), 0);
+      },
+    },
     { key: 'archive', label: 'Mark Lost / Reopen', icon: ArchiveIcon, onClick: row => { setRowToToggle(row); setConfirmModalOpen(true); } },
   ];
+  // Call recording upload state
+  const [uploadingLeadId, setUploadingLeadId] = useState(null);
+  const fileInputRef = React.useRef();
+
+  const handleCallFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingLeadId) return;
+    // TODO: Implement upload logic here (API call)
+    alert(`Uploading call recording for lead: ${uploadingLeadId}\nFile: ${file.name}`);
+    setUploadingLeadId(null);
+    e.target.value = '';
+  };
 
   return (
     <div className="p-2">
       <PageHeader
         title="Leads"
-        subtitle="Track and manage your incoming leads."
         actions={
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium" onClick={() => { setEditData(null); setModalFields(initialFields); setModalOpen(true); }}>
-            Add Lead
-          </button>
+          <AddButton onAdd={() => setModalOpen(true)} addLabel="Add Lead" />
         }
       />
 
-      <Table
-        headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
-        searchKeys={[]} searchKey="" onSearchKeyChange={() => { }}
-        searchText={searchText} onSearchTextChange={t => { setSearchText(t); setPage(1); }}
-        loading={loading} onPageChange={setPage}
-        onPageSizeChange={size => { setPageSize(size); setPage(1); }}
-        actions={actions}
-      />
+      <>
+        <Table
+          headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
+          searchKeys={['name', 'phone']} searchKey="name" onSearchKeyChange={() => { }}
+          searchText={searchText} onSearchTextChange={t => { setSearchText(t); setPage(1); }}
+          loading={loading} onPageChange={setPage}
+          onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+          actions={actions}
+        />
+        {/* Hidden file input for call upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          style={{ display: 'none' }}
+          onChange={handleCallFileChange}
+        />
+      </>
 
       {/* Add/Edit Modal */}
       <Modal
@@ -228,17 +422,55 @@ const CompanyLeads = () => {
           : (
             <form id="lead-form" onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Campaign (optional)" name="campigne" type="select"
-                  value={modalFields.campigne}
-                  onChange={e => setModalFields(p => ({ ...p, campigne: e.target.value }))}
-                  options={campaignOptions}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Lead Type</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    value={modalFields.type}
+                    onChange={e => setModalFields(p => ({ ...p, type: e.target.value, campigne: '' }))}
+                  >
+                    <option value="campaign">Campaign</option>
+                    <option value="thirdparty">3rd Party</option>
+                  </select>
+                </div>
                 <Input
                   label="Status" name="status" type="select"
                   value={modalFields.status}
                   onChange={e => setModalFields(p => ({ ...p, status: e.target.value }))}
                   options={statusSelectOptions} required
+                />
+                {modalFields.type === 'campaign' && (
+                  <Input
+                    label="Campaign" name="campigne" type="select"
+                    value={modalFields.campigne}
+                    onChange={e => setModalFields(p => ({ ...p, campigne: e.target.value }))}
+                    options={campaignOptions}
+                    required
+                  />
+                )}
+                <Input
+                  label="Name" name="name" type="text"
+                  value={modalFields.name}
+                  onChange={e => setModalFields(p => ({ ...p, name: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Phone" name="phone" type="text"
+                  value={modalFields.phone}
+                  onChange={e => setModalFields(p => ({ ...p, phone: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Organization" name="organization" type="text"
+                  value={modalFields.organization}
+                  onChange={e => setModalFields(p => ({ ...p, organization: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Email" name="email" type="email"
+                  value={modalFields.email}
+                  onChange={e => setModalFields(p => ({ ...p, email: e.target.value }))}
+                  required={false}
                 />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Next Meeting Date</label>
@@ -255,6 +487,7 @@ const CompanyLeads = () => {
                 placeholder="Any notes about this lead..."
                 value={modalFields.note}
                 onChange={e => setModalFields(p => ({ ...p, note: e.target.value }))}
+                required
               />
             </form>
           )}

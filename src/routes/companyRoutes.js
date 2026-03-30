@@ -5,11 +5,13 @@ import {
   TbUserSearch,
   TbUserHeart,
 } from "react-icons/tb";
+import { TbCreditCard } from "./subscriptionIcon";
 import CompanyDashboard from "../page/company/CompanyDashboard";
 import CompanyEmployees from "../page/company/CompanyEmployees";
 import CompanyCampaigns from "../page/company/CompanyCampaigns";
 import CompanyLeads from "../page/company/CompanyLeads";
 import CompanyCustomers from "../page/company/CompanyCustomers";
+import CompanySubscription from "../page/company/CompanySubcription";
 
 const companyRoutes = [
   {
@@ -41,6 +43,12 @@ const companyRoutes = [
     label: "Customers",
     icon: TbUserHeart,
     component: CompanyCustomers,
+  },
+  {
+    id: "subscription",
+    label: "Subscription",
+    icon: TbCreditCard,
+    component: CompanySubscription,
   },
 ];
 

@@ -6,6 +6,9 @@ import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployees, createEmployee, updateEmployee } from '../../api/employeeAndAdminApi';
 import { fetchRoles } from '../../api/rolePermissionsApi';
+import { assignLead, fetchUnassignedLeads, fetchEmployees } from '../../api/leadApi';
+import { uploadAvatar } from '../../api/uploadApi'; // Import the upload API
+import { AddButton } from '../../components/common/Table';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -15,6 +18,95 @@ const statusOptions = [
 
 const EditIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16.862 5.487a2.06 2.06 0 1 1 2.915 2.915L8.5 19.68l-4 1 1-4 13.362-13.193Z" /></svg>;
 const ToggleIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
+
+const SmartLeadAssignment = () => {
+
+  const { user } = useAuth();
+  const [leads, setLeads] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [selectedLead, setSelectedLead] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [leadData, employeeData] = await Promise.all([
+          fetchUnassignedLeads(user.company._id),
+          fetchEmployees(user.company._id),
+        ]);
+        setLeads(leadData);
+        setEmployees(employeeData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    loadData();
+  }, [user.company._id]);
+
+  const handleAssign = async () => {
+    if (!selectedLead || !selectedEmployee) {
+      alert('Please select both a lead and an employee.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await assignLead(selectedLead, selectedEmployee);
+      alert('Lead assigned successfully!');
+      setLeads((prev) => prev.filter((lead) => lead._id !== selectedLead));
+      setSelectedLead('');
+      setSelectedEmployee('');
+    } catch (error) {
+      console.error('Error assigning lead:', error);
+      alert('Failed to assign lead.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-4 border rounded bg-white">
+      <h2 className="text-lg font-bold mb-4">Smart Lead Assignment</h2>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2">Select Lead</label>
+        <select
+          value={selectedLead}
+          onChange={(e) => setSelectedLead(e.target.value)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="">-- Select Lead --</option>
+          {leads.map((lead) => (
+            <option key={lead._id} value={lead._id}>
+              {lead.name || `Lead #${lead._id.slice(-6)}`}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2">Select Employee</label>
+        <select
+          value={selectedEmployee}
+          onChange={(e) => setSelectedEmployee(e.target.value)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="">-- Select Employee --</option>
+          {employees.map((employee) => (
+            <option key={employee._id} value={employee._id}>
+              {employee.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <button
+        onClick={handleAssign}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+        disabled={loading}
+      >
+        {loading ? 'Assigning...' : 'Assign Lead'}
+      </button>
+    </div>
+  );
+};
 
 const CompanyEmployees = () => {
   const { user } = useAuth();
@@ -28,7 +120,7 @@ const CompanyEmployees = () => {
   const [editData, setEditData] = useState(null);
   const [rowToToggle, setRowToToggle] = useState(null);
 
-  const initialFields = { name: '', email: '', phone: '', role: '', password: '', avatar: '' };
+  const initialFields = { name: '', email: '', phone: '', role: '', password: '', confirmPassword: '', avatar: null };
   const [modalFields, setModalFields] = useState(initialFields);
 
   const [page, setPage] = useState(1);
@@ -79,7 +171,8 @@ const CompanyEmployees = () => {
       phone: row.phone || '',
       role: row.role?._id || row.role || '',
       password: '',
-      avatar: row.avatar || '',
+      confirmPassword: '',
+      avatar: null,
     });
     loadSelectData();
     setModalOpen(true);
@@ -88,7 +181,17 @@ const CompanyEmployees = () => {
   const handleSubmit = async () => {
     setModalLoading(true);
     try {
-      const payload = { ...modalFields, company: user._id };
+      let avatarUrl = '';
+      if (modalFields.avatar) {
+        const formData = new FormData();
+        formData.append('file', modalFields.avatar);
+        const uploadResponse = await uploadAvatar(formData);
+        avatarUrl = uploadResponse.url;
+      }
+
+      const payload = { ...modalFields, avatar: avatarUrl, company: user._id };
+      delete payload.confirmPassword;
+
       if (editData) {
         delete payload.password;
         await updateEmployee(editData._id, payload);
@@ -116,7 +219,10 @@ const CompanyEmployees = () => {
     }
   };
 
-  const f = (k) => (e) => setModalFields(p => ({ ...p, [k]: e.target.value }));
+  const f = (k) => (e) => {
+    const value = k === 'avatar' ? e.target.files[0] : e.target.value;
+    setModalFields(p => ({ ...p, [k]: value }));
+  };
 
   const tableHeaders = [
     { key: 'avatar', label: '', type: 'avatar', nameKey: 'name' },
@@ -147,21 +253,31 @@ const CompanyEmployees = () => {
     <div className="p-2">
       <PageHeader
         title="Employees"
-        subtitle="Manage your team members."
-        actions={
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium" onClick={handleAdd}>
-            Add Employee
-          </button>
-        }
+        actions={<AddButton onAdd={handleAdd} addLabel="Add Employee" />}
+        searchKeys={["name", "email"]}
+        searchKey={searchKey}
+        searchText={searchText}
+        onSearchKeyChange={setSearchKey}
+        onSearchTextChange={setSearchText}
       />
 
       <Table
-        headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
-        searchKeys={tableHeaders.filter(h => h.searchable).map(h => h.key)}
-        searchKey={searchKey} onSearchKeyChange={setSearchKey}
-        searchText={searchText} onSearchTextChange={setSearchText}
-        loading={loading} onPageChange={setPage}
-        onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+        headers={tableHeaders}
+        values={values}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        searchKeys={tableHeaders.filter((h) => h.searchable).map((h) => h.key)}
+        searchKey={searchKey}
+        onSearchKeyChange={setSearchKey}
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        loading={loading}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
         actions={actions}
       />
 
@@ -169,42 +285,115 @@ const CompanyEmployees = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editData ? 'Edit Employee' : 'Add Employee'}
+        title={editData ? "Edit Employee" : "Add Employee"}
         footer={
           !modalLoading && (
             <div className="flex justify-end gap-3">
-              <button type="button" className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" form="employee-form" className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm">
-                {editData ? 'Save Changes' : 'Add Employee'}
+              <button
+                type="button"
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="employee-form"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
+              >
+                {editData ? "Save Changes" : "Add Employee"}
               </button>
             </div>
           )
         }
       >
-        {modalLoading
-          ? <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>
-          : (
-            <form id="employee-form" onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Full Name" name="name" placeholder="John Doe" value={modalFields.name} onChange={f('name')} required />
-                <Input label="Email" name="email" type="email" placeholder="john@example.com" value={modalFields.email} onChange={f('email')} required />
-                <Input label="Phone" name="phone" placeholder="+1 555 000 0000" value={modalFields.phone} onChange={f('phone')} />
-                {!editData && (
-                  <Input label="Password" name="password" type="password" placeholder="••••••••" value={modalFields.password} onChange={f('password')} required />
-                )}
-                <Input label="Role" name="role" type="select" value={modalFields.role} onChange={f('role')} options={roleOptions} required />
+        {modalLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+          </div>
+        ) : (
+          <form
+            id="employee-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Full Name"
+                name="name"
+                placeholder="John Doe"
+                value={modalFields.name}
+                onChange={f("name")}
+                required
+              />
+              <Input
+                label="Email"
+                name="email"
+                type="email"
+                placeholder="john@example.com"
+                value={modalFields.email}
+                onChange={f("email")}
+                required
+              />
+              <Input
+                label="Phone"
+                name="phone"
+                placeholder="+1 555 000 0000"
+                value={modalFields.phone}
+                onChange={f("phone")}
+              />
+              {!editData && (
+                <>
+                  <Input
+                    label="Password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={modalFields.password}
+                    onChange={f("password")}
+                    required
+                  />
+                  <Input
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={modalFields.confirmPassword}
+                    onChange={f("confirmPassword")}
+                    required
+                  />
+                </>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-2">Avatar</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={f("avatar")}
+                  className="w-full p-2 border rounded"
+                />
               </div>
-              <Input label="Avatar URL" name="avatar" placeholder="https://..." value={modalFields.avatar} onChange={f('avatar')} />
-            </form>
-          )}
+            </div>
+          </form>
+        )}
       </Modal>
 
       <ConfirmDialog
         isOpen={confirmModalOpen}
-        onClose={() => { setConfirmModalOpen(false); setRowToToggle(null); }}
+        onClose={() => {
+          setConfirmModalOpen(false);
+          setRowToToggle(null);
+        }}
         onConfirm={handleToggleStatus}
         title="Change Status"
-        message={<>Change status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?</>}
+        message={
+          <>
+            Change status for <span className="font-semibold text-gray-800">"{rowToToggle?.name}"</span>?
+          </>
+        }
         confirmLabel="Confirm"
       />
     </div>

@@ -97,14 +97,16 @@ const Roles = () => {
     setModalLoading(true);
     try {
       if (editData) {
+        // Update role with permissions
         await updateRole(editData._id, fields);
       } else {
+        // Create new role with permissions
         await createRole(fields);
       }
       setModalOpen(false);
       getRoles();
     } catch (e) {
-      alert('Failed to save role');
+      alert('Failed to save role. Please check your input and try again.');
     } finally {
       setModalLoading(false);
     }
@@ -113,16 +115,21 @@ const Roles = () => {
   const handleRowAction = async (action, row) => {
     if (action === 'edit') {
       setEditData(row);
-      // Ensure permissions is map to an array of Object IDs for the multiselect
       const selectedPerms = row.permissions
-        ? row.permissions.map(p => typeof p === 'object' ? p._id : p)
+        ? row.permissions.map(p => (typeof p === 'object' ? p._id : p))
         : [];
       setModalFields({ name: row.name || '', permissions: selectedPerms });
       setModalOpen(true);
     } else if (action === 'status') {
       setLoading(true);
-      await updateRole(row._id, { status: row.status === 1 ? 0 : 1 });
-      getRoles();
+      try {
+        await updateRole(row._id, { status: row.status === 1 ? 0 : 1 });
+        getRoles();
+      } catch (e) {
+        alert('Failed to update role status.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

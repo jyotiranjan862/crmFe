@@ -56,6 +56,20 @@ export const deleteLead = async (id) => {
   return response.data;
 };
 
+export const importLeadsFromFile = async (file, campaignId) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("campaignId", campaignId);
+
+  const response = await axiosInstance.post("/leads/import", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
 
 export const createClient = async (data) => {
@@ -90,5 +104,20 @@ export const addClientDocument = async (id, data) => {
 
 export const addClientNote = async (id, data) => {
   const response = await axiosInstance.post(`/clients/${id}/note`, data);
+  return response.data;
+};
+
+export const fetchLeadPipeline = async () => {
+  const response = await axiosInstance.get('/leads/pipeline');
+  return response.data;
+};
+
+export const fetchActivityTimeline = async () => {
+  const response = await axiosInstance.get('/leads/activity-timeline');
+  return response.data;
+};
+
+export const fetchLeadInsights = async () => {
+  const response = await axiosInstance.get('/leads/insights');
   return response.data;
 };

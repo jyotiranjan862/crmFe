@@ -4,8 +4,9 @@ import Input from '../../components/common/Input';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
 import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
-import { getClients, createClient, updateClient, getLeads } from '../../api/campigneAndLeadApi';
+import { getClients, createClient, updateClient, getLeads, getCampaignsByCompany } from '../../api/campigneAndLeadApi';
 import { getEmployees } from '../../api/employeeAndAdminApi';
+import { AddButton } from '../../components/common/Table';
 
 const PROJECT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
 const PROJECT_STATUS_COLORS = {
@@ -25,12 +26,16 @@ const STATUS_OPTIONS = [
 const EditIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16.862 5.487a2.06 2.06 0 1 1 2.915 2.915L8.5 19.68l-4 1 1-4 13.362-13.193Z" /></svg>;
 const ToggleIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
 
-const CompanyCustomers = () => {
+const ConvertedClientsPage = () => {
   const { user } = useAuth();
   const [values, setValues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [allLeads, setAllLeads] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadCampaign, setLeadCampaign] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -68,9 +73,10 @@ const CompanyCustomers = () => {
   };
 
   const loadSelectData = async () => {
-    const [emp, leadData] = await Promise.allSettled([
+    const [emp, leadData, campData] = await Promise.allSettled([
       getEmployees({ limit: 100, company: user._id }),
       getLeads({ limit: 100, company: user._id }),
+      getCampaignsByCompany(user._id, { limit: 100 }),
     ]);
     if (emp.status === 'fulfilled') {
       const items = Array.isArray(emp.value.data) ? emp.value.data : (Array.isArray(emp.value) ? emp.value : []);
@@ -78,18 +84,33 @@ const CompanyCustomers = () => {
     }
     if (leadData.status === 'fulfilled') {
       const items = Array.isArray(leadData.value.data) ? leadData.value.data : (Array.isArray(leadData.value) ? leadData.value : []);
+      setAllLeads(items);
       setLeads(items);
+    }
+    if (campData.status === 'fulfilled') {
+      const items = Array.isArray(campData.value.data) ? campData.value.data : (Array.isArray(campData.value) ? campData.value : []);
+      setCampaigns(items);
     }
   };
 
-  useEffect(() => { load(); }, [page, pageSize, status, searchText]);
+  // Filter leads by campaign and search
+  useEffect(() => {
+    let filtered = allLeads;
+    if (leadCampaign) {
+      filtered = filtered.filter(l => l.campigne?._id === leadCampaign || l.campigne === leadCampaign);
+    }
+    if (leadSearch.trim()) {
+      const s = leadSearch.trim().toLowerCase();
+      filtered = filtered.filter(l =>
+        (l.leadData?.name || '').toLowerCase().includes(s) ||
+        (l.leadData?.email || '').toLowerCase().includes(s) ||
+        (l.leadData?.phone || '').toLowerCase().includes(s)
+      );
+    }
+    setLeads(filtered);
+  }, [leadSearch, leadCampaign, allLeads]);
 
-  const handleAdd = () => {
-    setEditData(null);
-    setModalFields(initialFields);
-    loadSelectData();
-    setModalOpen(true);
-  };
+  useEffect(() => { load(); }, [page, pageSize, status, searchText]);
 
   const handleEdit = (row) => {
     setEditData(row);
@@ -116,8 +137,6 @@ const CompanyCustomers = () => {
       const payload = { ...modalFields, company: user._id };
       if (editData) {
         await updateClient(editData._id, payload);
-      } else {
-        await createClient(payload);
       }
       setModalOpen(false);
       load();
@@ -180,17 +199,15 @@ const CompanyCustomers = () => {
 
   const employeeOptions = employees.map(e => ({ value: e._id, label: e.name }));
   const leadOptions = leads.map(l => ({ value: l._id, label: l.leadData?.name || l.leadData?.email || `Lead #${l._id?.slice(-6)}` }));
+  const campaignOptions = campaigns.map(c => ({ value: c._id, label: c.title }));
   const projectStatusOptions = PROJECT_STATUSES.map(s => ({ value: s, label: s }));
 
   return (
     <div className="p-2">
       <PageHeader
-        title="Customers"
-        subtitle="Manage converted leads and client projects."
+        title="Converted Clients"
         actions={
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium" onClick={handleAdd}>
-            Add Customer
-          </button>
+          <AddButton onAdd={() => { setEditData(null); setModalFields(initialFields); setModalOpen(true); loadSelectData(); }} addLabel="Add Client" />
         }
       />
 
@@ -207,13 +224,13 @@ const CompanyCustomers = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editData ? 'Edit Customer' : 'Add Customer'}
+        title={editData ? 'Edit Client' : 'Add Client'}
         size="lg"
         footer={
           !modalLoading && (
             <div className="flex justify-end gap-3">
               <button type="button" className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" form="client-form" className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-sm">{editData ? 'Save Changes' : 'Add Customer'}</button>
+              <button type="submit" form="client-form" className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-sm">{editData ? 'Save Changes' : 'Add Client'}</button>
             </div>
           )
         }
@@ -224,6 +241,30 @@ const CompanyCustomers = () => {
             <form id="client-form" onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="space-y-5">
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">Client Info</h3>
+                {/* Campaign filter and lead search */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Filter by Campaign</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={leadCampaign}
+                      onChange={e => setLeadCampaign(e.target.value)}
+                    >
+                      <option value="">All Campaigns</option>
+                      {campaignOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Search Lead</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Search by name, email, phone"
+                      value={leadSearch}
+                      onChange={e => setLeadSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input label="Lead" name="lead_id" type="select" value={modalFields.lead_id} onChange={e => setModalFields(p => ({ ...p, lead_id: e.target.value }))} options={leadOptions} required />
                   <Input label="Managed By" name="managedBy" type="select" value={modalFields.managedBy} onChange={e => setModalFields(p => ({ ...p, managedBy: e.target.value }))} options={employeeOptions} />
@@ -246,7 +287,7 @@ const CompanyCustomers = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Deadline</label>
                     <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" value={modalFields.projectDetails.deadline} onChange={proj('deadline')} />
                   </div>
-                  <Input label="Budget ($)" name="projBudget" type="number" placeholder="e.g. 5000" value={modalFields.projectDetails.budget} onChange={proj('budget')} min="0" />
+                  <Input label="Budget ($)" name="projBudget" type="number" placeholder="e.g. 5000" value={modalFields.projectDetails.budget} onChange={proj('budget')} min="0" required={false} />
                 </div>
                 <div className="mt-4">
                   <Input label="Project Description" name="projDesc" type="textarea" placeholder="Describe the project scope..." value={modalFields.projectDetails.description} onChange={proj('description')} />
@@ -269,4 +310,4 @@ const CompanyCustomers = () => {
   );
 };
 
-export default CompanyCustomers;
+export default ConvertedClientsPage;

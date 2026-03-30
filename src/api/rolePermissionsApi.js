@@ -3,8 +3,13 @@ import axiosInstance from '../utils/axiosInstance';
 
 // Get all permissions (with optional pagination/search)
 export const fetchPermissions = async (params = {}) => {
-  const response = await axiosInstance.get('/permissions', { params });
-  return response.data;
+  try {
+    const response = await axiosInstance.get('/permissions', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching permissions:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get a single permission by ID
@@ -35,8 +40,13 @@ export const deletePermission = async (id) => {
 
 // Get all roles (with optional pagination/search)
 export const fetchRoles = async (params = {}) => {
-  const response = await axiosInstance.get('/roles', { params });
-  return response.data;
+  try {
+    const response = await axiosInstance.get('/roles', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching roles:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get a single role by ID
@@ -60,5 +70,11 @@ export const updateRole = async (id, data) => {
 // Soft delete a role by ID
 export const deleteRole = async (id) => {
   const response = await axiosInstance.delete(`/roles/${id}`);
+  return response.data;
+};
+
+// Create credentials for a user
+export const createCredentials = async (data) => {
+  const response = await axiosInstance.post('/credentials', data);
   return response.data;
 };

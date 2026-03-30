@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import Table from '../../components/common/Table';
 import Input from '../../components/common/Input';
@@ -9,6 +11,7 @@ import {
   createCompany,
   updateCompany,
 } from '../../api/companyAndPackageApi';
+import { fetchRoles, fetchPermissions, createCredentials, } from '../../api/rolePermissionsApi';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -95,13 +98,15 @@ const Companies = () => {
     try {
       if (editData) {
         await updateCompany(editData._id, modalFields);
+        toast.success('Company information updated successfully');
       } else {
         await createCompany(modalFields);
+        toast.success('Company registered successfully');
       }
       setModalOpen(false);
       getCompanies();
     } catch (e) {
-      alert('Failed to save company information');
+      toast.error('Failed to save company information');
     } finally {
       setModalLoading(false);
     }
@@ -199,18 +204,134 @@ const Companies = () => {
     }
   ];
 
+  const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+  const [credentialsFields, setCredentialsFields] = useState({
+    userId: '',
+    password: '',
+    role: '',
+    permissions: [],
+  });
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+
+  const openCredentialsModal = async (editData = null) => {
+    try {
+      setCredentialsLoading(true);
+      const fetchedRolesResponse = await fetchRoles();
+      const fetchedPermissionsResponse = await fetchPermissions();
+
+      const fetchedRoles = fetchedRolesResponse.data || [];
+      const fetchedPermissions = fetchedPermissionsResponse.data || [];
+
+      if (!Array.isArray(fetchedRoles)) {
+        console.error('Error: Roles API did not return an array:', fetchedRolesResponse);
+        throw new Error('Failed to fetch roles. Please check the API response.');
+      }
+
+      if (!Array.isArray(fetchedPermissions)) {
+        console.error('Error: Permissions API did not return an array:', fetchedPermissionsResponse);
+        throw new Error('Failed to fetch permissions. Please check the API response.');
+      }
+
+      setRoles(fetchedRoles);
+      setPermissions(fetchedPermissions);
+
+      if (editData) {
+        setCredentialsFields({
+          userId: editData.userId || '',
+          password: '', // Keep password empty for security reasons
+          role: editData.role || '',
+          permissions: editData.permissions || [],
+        });
+      } else {
+        setCredentialsFields({
+          userId: '',
+          password: '',
+          role: '',
+          permissions: [],
+        });
+      }
+
+      setCredentialsModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching roles or permissions:', error);
+      toast.error('Failed to fetch roles or permissions. Please try again later.');
+
+      // Open modal with empty roles and permissions
+      setRoles([]);
+      setPermissions([]);
+      setCredentialsFields({
+        userId: '',
+        password: '',
+        role: '',
+        permissions: [],
+      });
+      setCredentialsModalOpen(true);
+    } finally {
+      setCredentialsLoading(false);
+    }
+  };
+
+  const handleCredentialsSubmit = async () => {
+    setCredentialsLoading(true);
+    try {
+      const payload = {
+        userId: credentialsFields.userId,
+        password: credentialsFields.password,
+        role: credentialsFields.role,
+        permissions: credentialsFields.permissions, // Ensure permissions are included in the payload
+      };
+
+      if (!payload.permissions || payload.permissions.length === 0) {
+        throw new Error('At least one permission must be selected.');
+      }
+
+      await createCredentials(payload);
+      toast.success('Credentials created successfully');
+      setCredentialsModalOpen(false);
+    } catch (error) {
+      console.error('Error creating credentials:', error);
+      toast.error(error.message || 'Failed to create credentials');
+    } finally {
+      setCredentialsLoading(false);
+    }
+  };
+
+  const handlePermissionChange = (permissionId, isChecked) => {
+    setCredentialsFields((prevFields) => {
+      const updatedPermissions = isChecked
+        ? [...prevFields.permissions.filter((id) => id !== null), permissionId] // Ensure no null values are added
+        : prevFields.permissions.filter((id) => id !== permissionId && id !== null); // Remove the unselected permission and null values
+
+      return {
+        ...prevFields,
+        permissions: updatedPermissions,
+      };
+    });
+  };
+
   return (
     <div className="p-2">
+      <ToastContainer />
       <PageHeader
         title="Companies directory"
-        subtitle="Manage onboarded companies and verify profiles."
+        
         actions={
-          <button
-            className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium"
-            onClick={handleAdd}
-          >
-            Add Company
-          </button>
+          <div className="flex gap-2">
+            <button
+              className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm font-medium"
+              onClick={handleAdd}
+            >
+              Add Company
+            </button>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm font-medium"
+              onClick={openCredentialsModal}
+            >
+              Create Credentials
+            </button>
+          </div>
         }
       />
 
@@ -388,6 +509,90 @@ const Companies = () => {
         }
         confirmLabel="Confirm Update"
       />
+
+      {/* Create Credentials Modal */}
+      <Modal
+        isOpen={credentialsModalOpen}
+        onClose={() => setCredentialsModalOpen(false)}
+        title="Create Credentials"
+        size="lg"
+        footer={
+          !credentialsLoading && (
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm"
+                onClick={() => setCredentialsModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="credentials-form"
+                className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all shadow-sm"
+              >
+                Create
+              </button>
+            </div>
+          )
+        }
+      >
+        {credentialsLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <form id="credentials-form" onSubmit={(e) => { e.preventDefault(); handleCredentialsSubmit(); }} className="space-y-6">
+            <Input
+              label="User ID"
+              name="userId"
+              placeholder="Enter user ID"
+              value={credentialsFields.userId}
+              onChange={(e) => setCredentialsFields({ ...credentialsFields, userId: e.target.value })}
+              required
+            />
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="Enter password"
+              value={credentialsFields.password}
+              onChange={(e) => setCredentialsFields({ ...credentialsFields, password: e.target.value })}
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <select
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                value={credentialsFields.role}
+                onChange={(e) => setCredentialsFields({ ...credentialsFields, role: e.target.value })}
+                required
+              >
+                <option value="">Select a role</option>
+                {roles.map(role => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Permissions</label>
+              <div className="grid grid-cols-2 gap-4">
+                {permissions.map(permission => (
+                  <label key={permission.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600"
+                      checked={credentialsFields.permissions.includes(permission.id)}
+                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                    />
+                    <span className="ml-2 text-sm text-gray-700">{permission.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };
