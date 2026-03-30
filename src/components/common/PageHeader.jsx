@@ -22,13 +22,13 @@ const PageHeader = ({
 	children,
 }) => {
 	return (
-		<div className="mb-4 space-y-3">
+		<div className="mb-4 space-y-3 bg-gray-100 p-4 rounded-lg shadow-sm">
 			{/* Top row: title + actions */}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<h1 className="text-xl font-bold text-gray-800 tracking-tight">{title}</h1>
+					<h1 className="text-2xl font-bold text-gray-800 tracking-tight">{title}</h1>
 					{subtitle && (
-						<p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+						<p className="text-sm text-gray-600 mt-1">{subtitle}</p>
 					)}
 				</div>
 				{actions && (
@@ -58,7 +58,7 @@ const PageHeader = ({
 						placeholder={searchPlaceholder}
 						value={searchValue || ""}
 						onChange={(e) => onSearch(e.target.value)}
-						className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-gray-400 focus:ring-1 focus:ring-gray-300 outline-none transition"
+						className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
 					/>
 				</div>
 			)}

@@ -373,7 +373,20 @@ const Table = ({
     return String(displayValue);
   }, []);
 
-  const visibleHeaders = headers.filter(h => h.label?.toLowerCase() !== "permissions");
+  // Fix: Ensure h.label is a string before calling toLowerCase
+  const getHeaderLabelText = (label) => {
+    if (typeof label === 'string') return label;
+    if (label && typeof label.props?.children === 'string') return label.props.children;
+    // Try to extract text from React element children recursively
+    if (label && label.props?.children) {
+      if (Array.isArray(label.props.children)) {
+        return label.props.children.map(getHeaderLabelText).join(' ');
+      }
+      return getHeaderLabelText(label.props.children);
+    }
+    return '';
+  };
+  const visibleHeaders = headers.filter(h => getHeaderLabelText(h.label).toLowerCase() !== "permissions");
   const colSpan = visibleHeaders.length + 2 + (hasActions ? 1 : 0);
   const start = total > 0 ? (page - 1) * pageSize + 1 : 0;
   const end = Math.min(page * pageSize, total);
@@ -460,7 +473,15 @@ const Table = ({
                 e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.4) inset, 0 5px 0 #4d7c0f, 0 7px 10px rgba(74,120,8,0.40)";
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
                 <path d="M8 3v10M3 8h10" />
               </svg>
               {addLabel}
@@ -724,4 +745,67 @@ const tdStyle = {
   minHeight: 28,
 };
 
+const AddButton = ({ onAdd, addLabel = "Add" }) => {
+  const limeBtn = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "7px",
+    padding: "10px 22px",
+    borderRadius: "11px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#1a3a00",
+    letterSpacing: "0.01em",
+    whiteSpace: "nowrap",
+    border: "none",
+    background: "linear-gradient(160deg, #b5f053 0%, #84cc16 40%, #65a30d 100%)",
+    borderTop: "1px solid rgba(255,255,255,0.45)",
+    boxShadow:
+      "0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 0 rgba(0,0,0,0.15) inset, 0 4px 0 #4d7c0f, 0 5px 6px rgba(74,120,8,0.35), 0 10px 20px rgba(101,163,13,0.20)",
+    transition: "all 0.15s ease",
+  };
+
+  return (
+    <button
+      onClick={onAdd}
+      style={limeBtn}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow =
+          "0 1px 0 rgba(255,255,255,0.4) inset, 0 5px 0 #4d7c0f, 0 7px 10px rgba(74,120,8,0.40), 0 14px 24px rgba(101,163,13,0.22)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.boxShadow = limeBtn.boxShadow;
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = "translateY(3px)";
+        e.currentTarget.style.boxShadow =
+          "0 2px 4px rgba(0,0,0,0.12) inset, 0 1px 0 rgba(255,255,255,0.25) inset, 0 1px 0 #4d7c0f";
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow =
+          "0 1px 0 rgba(255,255,255,0.4) inset, 0 5px 0 #4d7c0f, 0 7px 10px rgba(74,120,8,0.40)";
+      }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      >
+        <path d="M8 3v10M3 8h10" />
+      </svg>
+      {addLabel}
+    </button>
+  );
+};
+
+export { AddButton };
 export default React.memo(Table);
