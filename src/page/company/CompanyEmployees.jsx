@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Table from '../../components/common/Table';
 import Input from '../../components/common/Input';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
 import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
-import { getEmployees, createEmployee, updateEmployee } from '../../api/employeeAndAdminApi';
+import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '../../api/employeeAndAdminApi';
 import { fetchRoles } from '../../api/rolePermissionsApi';
 import { assignLead, fetchUnassignedLeads, fetchEmployees } from '../../api/leadApi';
 import { uploadAvatar } from '../../api/uploadApi'; // Import the upload API
@@ -126,14 +126,29 @@ const CompanyEmployees = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [searchText, setSearchText] = useState('');
-  const [searchKey, setSearchKey] = useState('name');
-  const [status, setStatus] = useState('');
+  const [searchText, setSearchText] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const debounceTimeout = useRef();
+  const [searchKey, setSearchKey] = useState("name");
+  const [status, setStatus] = useState("");
+  const [role, setRole] = useState("");
+  const sortBy = "createdAt";
+  const sortOrder = "desc";
 
   const load = async () => {
     try {
       setLoading(true);
-      const data = await getEmployees({ page, limit: pageSize, search: searchText, status, company: user._id });
+      const params = {
+        page,
+        limit: pageSize,
+        company: user._id,
+        sortBy,
+        sortOrder,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (status !== '') params.status = status;
+      if (role) params.role = role;
+      const data = await getEmployees(params);
       const items = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
       setValues(items);
       setTotal(data.total || items.length);
@@ -144,11 +159,22 @@ const CompanyEmployees = () => {
     }
   };
 
-  useEffect(() => { load(); }, [page, pageSize, searchText, status]);
+  // Only trigger load on debouncedSearch, not searchText
+  useEffect(() => { load(); }, [page, pageSize, debouncedSearch, status, role, sortBy, sortOrder]);
+
+  // Debounce searchText changes
+  useEffect(() => {
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 400);
+    return () => clearTimeout(debounceTimeout.current);
+  }, [searchText]);
+  // (fixed) Removed stray params usage outside of function
 
   const loadSelectData = async () => {
     const [r] = await Promise.allSettled([
-      fetchRoles({ limit: 100 }),
+      fetchRoles({ limit: 100, type: 'company' }),
     ]);
     if (r.status === 'fulfilled') {
       const items = Array.isArray(r.value.data) ? r.value.data : (Array.isArray(r.value) ? r.value : []);
@@ -189,13 +215,27 @@ const CompanyEmployees = () => {
         avatarUrl = uploadResponse.url;
       }
 
-      const payload = { ...modalFields, avatar: avatarUrl, company: user._id };
-      delete payload.confirmPassword;
-
       if (editData) {
-        delete payload.password;
+        // For edit, do not send password or confirmPassword
+        const payload = {
+          name: modalFields.name,
+          email: modalFields.email,
+          phone: modalFields.phone,
+          role: modalFields.role,
+          company: user._id,
+          avatar: avatarUrl,
+        };
         await updateEmployee(editData._id, payload);
       } else {
+        // For create, send only required fields
+        const payload = {
+          name: modalFields.name,
+          email: modalFields.email,
+          phone: modalFields.phone,
+          role: modalFields.role,
+          company: user._id,
+          password: modalFields.password,
+        };
         await createEmployee(payload);
       }
       setModalOpen(false);
@@ -241,6 +281,19 @@ const CompanyEmployees = () => {
     },
     { key: 'createdAt', label: 'Created', format: 'date' },
   ];
+
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Are you sure you want to delete employee "${row.name}"?`)) return;
+    setLoading(true);
+    try {
+      await deleteEmployee(row._id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to delete employee');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const actions = [
     { key: 'edit', label: 'Edit', icon: EditIcon, onClick: handleEdit },
@@ -345,6 +398,21 @@ const CompanyEmployees = () => {
                 value={modalFields.phone}
                 onChange={f("phone")}
               />
+              <div>
+                <label className="block text-sm font-medium mb-2">Role</label>
+                <select
+                  name="role"
+                  value={modalFields.role}
+                  onChange={f("role")}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  <option value="">-- Select Role --</option>
+                  {roles.map((role) => (
+                    <option key={role._id} value={role._id}>{role.name}</option>
+                  ))}
+                </select>
+              </div>
               {!editData && (
                 <>
                   <Input
@@ -367,15 +435,6 @@ const CompanyEmployees = () => {
                   />
                 </>
               )}
-              <div>
-                <label className="block text-sm font-medium mb-2">Avatar</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={f("avatar")}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
             </div>
           </form>
         )}
