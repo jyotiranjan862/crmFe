@@ -24,7 +24,7 @@ const EditIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><pa
 const NotesIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>;
 const ArchiveIcon = <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-8-8v8m13-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
 
-const LeadLifecyclePipeline = () => {
+const LeadLifecyclePipeline = ({ companyId }) => {
   const [pipelineData, setPipelineData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,8 +32,8 @@ const LeadLifecyclePipeline = () => {
     const loadPipeline = async () => {
       setLoading(true);
       try {
-        const data = await fetchLeadPipeline();
-        setPipelineData(data);
+        const data = await fetchLeadPipeline(companyId);
+        setPipelineData(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching pipeline data:', error);
       } finally {
@@ -41,8 +41,8 @@ const LeadLifecyclePipeline = () => {
       }
     };
 
-    loadPipeline();
-  }, []);
+    if (companyId) loadPipeline();
+  }, [companyId]);
 
   return (
     <div className="p-4 border rounded bg-white">
@@ -63,7 +63,7 @@ const LeadLifecyclePipeline = () => {
   );
 };
 
-const ActivityTimeline = () => {
+const ActivityTimeline = ({ companyId }) => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,8 +71,8 @@ const ActivityTimeline = () => {
     const loadActivities = async () => {
       setLoading(true);
       try {
-        const data = await fetchActivityTimeline();
-        setActivities(data);
+        const data = await fetchActivityTimeline(companyId);
+        setActivities(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching activity timeline:', error);
       } finally {
@@ -80,8 +80,8 @@ const ActivityTimeline = () => {
       }
     };
 
-    loadActivities();
-  }, []);
+    if (companyId) loadActivities();
+  }, [companyId]);
 
   return (
     <div className="p-4 border rounded bg-white">
@@ -102,7 +102,7 @@ const ActivityTimeline = () => {
   );
 };
 
-const LeadIntelligenceEngine = () => {
+const LeadIntelligenceEngine = ({ companyId }) => {
   const [insights, setInsights] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -110,8 +110,8 @@ const LeadIntelligenceEngine = () => {
     const loadInsights = async () => {
       setLoading(true);
       try {
-        const data = await fetchLeadInsights();
-        setInsights(data);
+        const data = await fetchLeadInsights(companyId);
+        setInsights(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching lead insights:', error);
       } finally {
@@ -119,8 +119,8 @@ const LeadIntelligenceEngine = () => {
       }
     };
 
-    loadInsights();
-  }, []);
+    if (companyId) loadInsights();
+  }, [companyId]);
 
   return (
     <div className="p-4 border rounded bg-white">
@@ -221,11 +221,14 @@ const CompanyLeads = () => {
       }
       const payload = {
         company: user._id,
+        createdBy: user._id,
         status: modalFields.status,
-        name: modalFields.name,
-        phone: modalFields.phone,
-        organization: modalFields.organization,
-        email: modalFields.email,
+        leadData: {
+          name: modalFields.name,
+          phone: modalFields.phone,
+          organization: modalFields.organization,
+          email: modalFields.email,
+        },
         nextMeetingDate: modalFields.nextMeetingDate || null,
         notes: modalFields.note.trim() ? [{ text: modalFields.note.trim() }] : [],
       };
@@ -292,14 +295,14 @@ const CompanyLeads = () => {
       render: v => v?.title || <span className="text-xs text-gray-400">—</span>
     },
     {
-      key: 'name',
+      key: 'leadData',
       label: <span title="Lead Name"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" className="inline mr-1"><circle cx="12" cy="8" r="4" stroke="#0ea5e9" strokeWidth="2" /><path stroke="#0ea5e9" strokeWidth="2" d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>Name</span>,
-      render: v => v || <span className="text-xs text-gray-400">—</span>
+      render: v => v?.name || <span className="text-xs text-gray-400">—</span>
     },
     {
-      key: 'phone',
+      key: 'leadData',
       label: <span title="Phone"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#10b981" strokeWidth="2" d="M22 16.92V21a1 1 0 0 1-1.09 1A19.91 19.91 0 0 1 3 5.09 1 1 0 0 1 4 4h4.09a1 1 0 0 1 1 .75l1.1 4.4a1 1 0 0 1-.29 1L8.21 12.21a16 16 0 0 0 7.58 7.58l2.06-2.06a1 1 0 0 1 1-.29l4.4 1.1a1 1 0 0 1 .75 1V21z" /></svg>Phone</span>,
-      render: v => v || <span className="text-xs text-gray-400">—</span>
+      render: v => v?.phone || <span className="text-xs text-gray-400">—</span>
     },
     {
       key: 'notes',
@@ -339,8 +342,13 @@ const CompanyLeads = () => {
       onClick: row => {
         setEditData(row);
         setModalFields({
+          type: row.campigne ? 'campaign' : 'thirdparty',
           campigne: row.campigne?._id || row.campigne || '',
           status: row.status || 'created',
+          name: row.leadData?.name || '',
+          phone: row.leadData?.phone || '',
+          organization: row.leadData?.organization || '',
+          email: row.leadData?.email || '',
           nextMeetingDate: row.nextMeetingDate ? row.nextMeetingDate.slice(0, 10) : '',
           note: '',
         });
@@ -387,7 +395,7 @@ const CompanyLeads = () => {
       <>
         <Table
           headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
-          searchKeys={['name', 'phone']} searchKey="name" onSearchKeyChange={() => { }}
+          searchKeys={['leadData.name', 'leadData.phone']} searchKey="leadData.name" onSearchKeyChange={() => { }}
           searchText={searchText} onSearchTextChange={t => { setSearchText(t); setPage(1); }}
           loading={loading} onPageChange={setPage}
           onPageSizeChange={size => { setPageSize(size); setPage(1); }}

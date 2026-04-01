@@ -56,17 +56,9 @@ export const deleteLead = async (id) => {
   return response.data;
 };
 
-export const importLeadsFromFile = async (file, campaignId) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("campaignId", campaignId);
-
-  const response = await axiosInstance.post("/leads/import", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-
+export const importLeadsFromFile = async (data) => {
+  // data = { campaignId, leads: [...], company, createdBy }
+  const response = await axiosInstance.post("/leads/import", data);
   return response.data;
 };
 
@@ -107,17 +99,17 @@ export const addClientNote = async (id, data) => {
   return response.data;
 };
 
-export const fetchLeadPipeline = async () => {
-  const response = await axiosInstance.get('/leads/pipeline');
+export const fetchLeadPipeline = async (companyId) => {
+  const response = await axiosInstance.get('/leads/pipeline', { params: companyId ? { company: companyId } : {} });
   return response.data;
 };
 
-export const fetchActivityTimeline = async () => {
-  const response = await axiosInstance.get('/leads/activity-timeline');
+export const fetchActivityTimeline = async (companyId) => {
+  const response = await axiosInstance.get('/leads/activity-timeline', { params: companyId ? { company: companyId } : {} });
   return response.data;
 };
 
-export const fetchLeadInsights = async () => {
-  const response = await axiosInstance.get('/leads/insights');
+export const fetchLeadInsights = async (companyId) => {
+  const response = await axiosInstance.get('/leads/insights', { params: companyId ? { company: companyId } : {} });
   return response.data;
 };

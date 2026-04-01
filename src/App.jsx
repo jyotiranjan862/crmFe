@@ -4,6 +4,7 @@ import MainLayout from "./layout/mainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import NotFoundPage from "./page/common/NotFoundPage";
 import LoginPage from "./page/common/LoginPage";
+import PublicCampaignPage from "./page/company/PublicCampaignPage";
 import Loader from "./components/common/Loader";
 import { useAuth } from "./context/AuthContext";
 
@@ -16,12 +17,15 @@ function App() {
     <Router>
       <Suspense fallback={<Loader />}>
         <Routes>
-          {/* Public route */}
+          {/* Public routes */}
           <Route path="/login" element={
             isAuthenticated
               ? <Navigate to={`/${userType}`} replace />
               : <LoginPage />
           } />
+
+          {/* Public campaign landing page */}
+          <Route path="/campaign/:campaignId" element={<PublicCampaignPage />} />
 
           {/* Root redirect */}
           <Route path="/" element={

@@ -187,6 +187,7 @@ const ACCEPTED = '.csv,.xlsx,.xls,.pdf';
 
 
 function ImportLeadsModal({ isOpen, onClose, campaigns, onImported }) {
+  const { user } = useAuth();
   const [step, setStep] = useState(1); // 1=select campaign, 2=upload, 3=preview, 4=done
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [externalCampaign, setExternalCampaign] = useState(false);
@@ -270,8 +271,9 @@ function ImportLeadsModal({ isOpen, onClose, campaigns, onImported }) {
     try {
       const result = await importLeadsFromFile({
         campaignId: externalCampaign ? undefined : selectedCampaign,
-        externalCampaign: externalCampaign ? externalCampaignName : undefined,
         leads: parsedRows,
+        company: user._id,
+        createdBy: user._id,
       });
       setImportResult(result);
       setStep(4);
@@ -679,33 +681,32 @@ const CompanyCampaigns = () => {
   const handleSubmit = async () => {
     setModalLoading(true);
     try {
-      // Retrieve company details from local storage
-      const userData = JSON.parse(localStorage.getItem('user'));
-      const companyName = userData?.name || '';
-      const companyId = userData?._id || '';
-
       const payload = {
         title: modalFields.title,
         description: modalFields.description,
-        company: companyName, // Include company name from local storage
-        companyId: companyId, // Include company ID from local storage
-        createdBy: user._id, // Assuming `user._id` holds the creator's ID
+        company: user._id,
+        createdBy: user._id,
         formStructure: modalFields.formStructure.map(field => ({
           name: field.name,
           label: field.label,
           type: field.type,
           isRequired: field.isRequired,
-          prefilledValue: field.prefilledValue || '', // Default empty string for prefilledValue
+          prefilledValue: field.prefilledValue || null,
           options: field.options || [],
           placeholder: field.placeholder || '',
         })),
-        status: 0, // Default status value (0)
+        status: 1,
       };
 
-      await createCampaign(payload); // Assuming `createCampaign` is the API call function
+      if (editData) {
+        await updateCampaign(editData._id, payload);
+      } else {
+        await createCampaign(payload);
+      }
       setModalOpen(false);
       loadCampaigns();
     } catch (e) {
+      alert(e.response?.data?.message || 'Failed to save campaign');
       console.error('Error saving campaign:', e);
     } finally {
       setModalLoading(false);
@@ -716,7 +717,8 @@ const CompanyCampaigns = () => {
     if (!rowToToggle) return;
     setLoading(true);
     try {
-      await updateCampaign(rowToToggle._id, { status: rowToToggle.status === 1 ? 0 : 1 });
+      const nextStatus = rowToToggle.status === 3 ? 1 : 3; // Completed <-> Active
+      await updateCampaign(rowToToggle._id, { status: nextStatus });
     } finally {
       setConfirmModalOpen(false);
       setRowToToggle(null);
