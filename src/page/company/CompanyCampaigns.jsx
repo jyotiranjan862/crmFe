@@ -633,7 +633,7 @@ const CompanyCampaigns = () => {
   // NEW: success toast for created campaign URL
   const [newCampaignUrl, setNewCampaignUrl] = useState(null);
 
-  const initialFields = { title: '', description: '', formStructure: [] };
+  const initialFields = { title: '', description: '', formStructure: [], status: 1 };
   const [modalFields, setModalFields] = useState(initialFields);
 
   const emptyField = { name: '', label: '', type: 'text', isRequired: false, placeholder: '', options: '' };
@@ -695,7 +695,7 @@ const CompanyCampaigns = () => {
           options: field.options || [],
           placeholder: field.placeholder || '',
         })),
-        status: 1,
+        status: modalFields.status || 1,
       };
 
       if (editData) {
@@ -751,17 +751,24 @@ const CompanyCampaigns = () => {
     },
     {
       key: '_id', label: 'Landing URL',
-      render: (_, row) => (
-        <button
-          type="button"
-          title="View / Copy campaign URL"
-          onClick={() => { setUrlCampaign(row); setUrlModalOpen(true); }}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
-        >
-          {LinkIcon}
-          Get URL
-        </button>
-      ),
+      render: (_, row) => {
+        const isStarted = row.status === 2;
+        return (
+          <button
+            type="button"
+            title={isStarted ? 'View / Copy campaign URL' : 'URL available only when campaign is Started'}
+            onClick={isStarted ? () => { setUrlCampaign(row); setUrlModalOpen(true); } : undefined}
+            disabled={!isStarted}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors border
+              ${isStarted
+                ? 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer'
+                : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'}`}
+          >
+            {LinkIcon}
+            Get URL
+          </button>
+        );
+      },
     },
     { key: 'createdAt', label: 'Created', format: 'date' },
   ];
@@ -795,14 +802,15 @@ const CompanyCampaigns = () => {
       key: 'edit', label: 'Edit', icon: EditIcon,
       onClick: row => {
         setEditData(row);
-        setModalFields({ title: row.title || '', description: row.description || '', formStructure: row.formStructure || [] });
+        setModalFields({
+          title: row.title || '',
+          description: row.description || '',
+          formStructure: row.formStructure || [],
+          status: row.status || 1,
+        });
         setNewField(emptyField);
         setModalOpen(true);
       },
-    },
-    {
-      key: 'url', label: 'Campaign URL', icon: LinkIcon,
-      onClick: row => { setUrlCampaign(row); setUrlModalOpen(true); },
     },
     {
       key: 'import', label: 'Import Leads', icon: ImportIcon,
@@ -923,6 +931,21 @@ const CompanyCampaigns = () => {
                 <Input label="Campaign Title" name="title" placeholder="e.g. Q1 Lead Drive"
                   value={modalFields.title}
                   onChange={e => setModalFields(p => ({ ...p, title: e.target.value }))} required />
+                {/* Status dropdown only in edit mode */}
+                {editData && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={modalFields.status}
+                      onChange={e => setModalFields(p => ({ ...p, status: Number(e.target.value) }))}
+                    >
+                      {STATUS_OPTIONS.filter(opt => opt.value !== '').map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <Input label="Description" name="description" type="textarea"
                 placeholder="What is this campaign about?"

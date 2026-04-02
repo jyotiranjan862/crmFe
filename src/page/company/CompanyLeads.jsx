@@ -165,7 +165,8 @@ const CompanyLeads = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [searchText, setSearchText] = useState('');
+  // Remove search, add campaign filter
+  const [filterCampaign, setFilterCampaign] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
   const load = async () => {
@@ -173,7 +174,7 @@ const CompanyLeads = () => {
       setLoading(true);
       const params = { page, limit: pageSize, company: user._id };
       if (filterStatus) params.status = filterStatus;
-      if (searchText) params.search = searchText;
+      if (filterCampaign) params.campigne = filterCampaign;
       const data = await getLeads(params);
       const items = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
       setValues(items);
@@ -185,7 +186,7 @@ const CompanyLeads = () => {
     }
   };
 
-  useEffect(() => { load(); }, [page, pageSize, filterStatus, searchText]);
+  useEffect(() => { load(); }, [page, pageSize, filterStatus, filterCampaign]);
 
   const loadCampaigns = async () => {
     try {
@@ -288,6 +289,9 @@ const CompanyLeads = () => {
   const campaignOptions = campaigns.map(c => ({ value: c._id, label: c.title }));
   const statusSelectOptions = LEAD_STATUSES.map(s => ({ value: s.value, label: s.label }));
 
+  const EyeIcon = (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#6366f1" strokeWidth="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3" stroke="#6366f1" strokeWidth="2"/></svg>
+  );
   const tableHeaders = [
     {
       key: 'campigne',
@@ -295,24 +299,17 @@ const CompanyLeads = () => {
       render: v => v?.title || <span className="text-xs text-gray-400">—</span>
     },
     {
-      key: 'leadData',
-      label: <span title="Lead Name"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" className="inline mr-1"><circle cx="12" cy="8" r="4" stroke="#0ea5e9" strokeWidth="2" /><path stroke="#0ea5e9" strokeWidth="2" d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>Name</span>,
-      render: v => v?.name || <span className="text-xs text-gray-400">—</span>
-    },
-    {
-      key: 'leadData',
-      label: <span title="Phone"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#10b981" strokeWidth="2" d="M22 16.92V21a1 1 0 0 1-1.09 1A19.91 19.91 0 0 1 3 5.09 1 1 0 0 1 4 4h4.09a1 1 0 0 1 1 .75l1.1 4.4a1 1 0 0 1-.29 1L8.21 12.21a16 16 0 0 0 7.58 7.58l2.06-2.06a1 1 0 0 1 1-.29l4.4 1.1a1 1 0 0 1 .75 1V21z" /></svg>Phone</span>,
-      render: v => v?.phone || <span className="text-xs text-gray-400">—</span>
-    },
-    {
-      key: 'notes',
-      label: <span title="Notes"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#f59e42" strokeWidth="2" /><path stroke="#f59e42" strokeWidth="2" d="M8 8h8M8 12h8M8 16h4" /></svg>Notes</span>,
-      render: v => <span className="text-xs text-gray-500">{Array.isArray(v) ? `${v.length} note${v.length !== 1 ? 's' : ''}` : '—'}</span>
-    },
-    {
-      key: 'aiDescription',
-      label: <span title="Description (AI)"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" className="inline mr-1"><path stroke="#a21caf" strokeWidth="2" d="M12 20v-6m0 0V4m0 10H6m6 0h6" /></svg>Desc.</span>,
-      render: v => v ? <span className="text-xs text-gray-700">{v}</span> : <span className="text-xs text-gray-400">—</span>
+      key: 'view',
+      label: <span title="View Lead">Lead data</span>,
+      render: (_, row) => (
+        <button
+          className="p-2 rounded-full hover:bg-gray-100"
+          title="View Lead Data"
+          onClick={() => setDetailLead(row)}
+        >
+          {EyeIcon}
+        </button>
+      )
     },
     {
       key: 'salesPerson',
@@ -392,24 +389,32 @@ const CompanyLeads = () => {
         }
       />
 
-      <>
-        <Table
-          headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
-          searchKeys={['leadData.name', 'leadData.phone']} searchKey="leadData.name" onSearchKeyChange={() => { }}
-          searchText={searchText} onSearchTextChange={t => { setSearchText(t); setPage(1); }}
-          loading={loading} onPageChange={setPage}
-          onPageSizeChange={size => { setPageSize(size); setPage(1); }}
-          actions={actions}
-        />
-        {/* Hidden file input for call upload */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          style={{ display: 'none' }}
-          onChange={handleCallFileChange}
-        />
-      </>
+      {/* Campaign filter dropdown */}
+      <div className="mb-4 flex items-center gap-2">
+        <label className="text-sm font-medium">Filter by Campaign:</label>
+        <select
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          value={filterCampaign}
+          onChange={e => { setFilterCampaign(e.target.value); setPage(1); }}
+        >
+          <option value="">All Campaigns</option>
+          {campaigns.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+        </select>
+      </div>
+      <Table
+        headers={tableHeaders} values={values} total={total} page={page} pageSize={pageSize}
+        loading={loading} onPageChange={setPage}
+        onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+        actions={actions}
+      />
+      {/* Hidden file input for call upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        style={{ display: 'none' }}
+        onChange={handleCallFileChange}
+      />
 
       {/* Add/Edit Modal */}
       <Modal
@@ -512,7 +517,7 @@ const CompanyLeads = () => {
         variant="warning"
       />
 
-      {/* Notes Slide-Over Panel */}
+      {/* Lead Data Slide-Over Panel */}
       {detailLead && (
         <div className="fixed inset-0 z-50" onClick={() => setDetailLead(null)}>
           {/* Overlay */}
@@ -541,51 +546,23 @@ const CompanyLeads = () => {
               </button>
             </div>
 
-            {/* Notes timeline */}
+            {/* Dynamic Lead Data */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {(!Array.isArray(detailLead.notes) || detailLead.notes.length === 0) ? (
-                <div className="text-center text-sm text-gray-400 py-8">No notes yet. Add the first note below.</div>
-              ) : detailLead.notes.map((note, idx) => (
-                <div key={idx} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0 mt-0.5">
-                    {(note.addedBy?.name || 'U')[0]?.toUpperCase()}
+              <h4 className="font-semibold text-md mb-2">Lead Data</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(detailLead.leadData || {}).map(([key, value]) => (
+                  <div key={key}>
+                    <span className="block text-xs text-gray-400 font-medium mb-1">{key}</span>
+                    <span className="block text-sm text-gray-800 break-all">{String(value)}</span>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-semibold text-gray-700">{note.addedBy?.name || 'Team Member'}</span>
-                      {note.addedAt && (
-                        <span className="text-xs text-gray-400">{new Date(note.addedAt).toLocaleString()}</span>
-                      )}
-                    </div>
-                    <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 border border-gray-100">
-                      {note.text}
-                    </div>
+                ))}
+                {Object.entries(detailLead).filter(([k]) => !['leadData','company','campigne','status','_id','__v','createdAt','updatedAt'].includes(k)).map(([key, value]) => (
+                  <div key={key}>
+                    <span className="block text-xs text-gray-400 font-medium mb-1">{key}</span>
+                    <span className="block text-sm text-gray-800 break-all">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add note form */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-              <form onSubmit={handleAddNote} className="flex gap-3 items-end">
-                <textarea
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                  rows={2}
-                  placeholder="Add a note about this lead..."
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddNote(e); } }}
-                />
-                <button
-                  type="submit"
-                  disabled={addingNote || !noteText.trim()}
-                  className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 transition-colors shrink-0"
-                >
-                  {addingNote ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : 'Add Note'}
-                </button>
-              </form>
+                ))}
+              </div>
             </div>
           </div>
         </div>

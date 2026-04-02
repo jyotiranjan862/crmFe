@@ -10,29 +10,37 @@ import Loader from '../../components/common/Loader';
 
 const PublicCampaignPage = () => {
   const { campaignId } = useParams();
+  console.log("the campaign id is ", campaignId)
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Track if already submitted for this campaign
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [touchedFields, setTouchedFields] = useState({});
 
   // Load campaign on mount
   useEffect(() => {
+    // Check localStorage for already submitted campaigns
+    const submittedArr = JSON.parse(localStorage.getItem('submittedCampaigns') || '[]');
+    if (submittedArr.includes(campaignId)) {
+      setAlreadySubmitted(true);
+      setSuccess(true);
+    }
+
     const loadCampaign = async () => {
       try {
         console.log('Loading campaign with ID:', campaignId);
         const res = await axiosInstance.get(`/campigne/${campaignId}`);
         console.log('Campaign loaded successfully:', res.data);
         const data = res.data;
-        
         // Ensure company data is available
         if (!data.company) {
           console.warn('Campaign loaded but company data is missing:', data);
         }
-        
         setCampaign(data);
         const initialData = {};
         (data.formStructure || []).forEach(field => {
@@ -105,47 +113,42 @@ const PublicCampaignPage = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
     setSubmitting(true);
     try {
       // Extract company ID - handle both object and string formats
       let companyId = null;
-      
       if (campaign?.company) {
-        // If company is an object with _id property
         if (typeof campaign.company === 'object' && campaign.company._id) {
           companyId = campaign.company._id;
-        }
-        // If company is already a string ID
-        else if (typeof campaign.company === 'string') {
+        } else if (typeof campaign.company === 'string') {
           companyId = campaign.company;
         }
       }
-
-      // Validate company ID exists
       if (!companyId) {
         console.error('Campaign company data:', campaign?.company);
         setFieldErrors({ _form: 'Campaign company information is missing. Please refresh and try again.' });
         setSubmitting(false);
         return;
       }
-
       const payload = {
         campigne: campaignId,
         leadData: formData,
         company: companyId,
         status: 'created'
       };
-
       console.log('Submitting lead with payload:', payload);
-
       await axiosInstance.post('/leads', payload);
       setSuccess(true);
-      
+      // Store campaignId in localStorage array
+      let submittedArr = JSON.parse(localStorage.getItem('submittedCampaigns') || '[]');
+      if (!submittedArr.includes(campaignId)) {
+        submittedArr.push(campaignId);
+        localStorage.setItem('submittedCampaigns', JSON.stringify(submittedArr));
+      }
+      setAlreadySubmitted(true);
       // Reset form after success
       setTimeout(() => {
         setFormData({});
@@ -183,7 +186,6 @@ const PublicCampaignPage = () => {
           <p className="text-gray-600 text-base mb-6">
             This campaign link may have expired or is no longer available.
           </p>
-          
           {/* Debug information - only show in development */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
@@ -192,7 +194,6 @@ const PublicCampaignPage = () => {
               <p className="text-xs text-blue-600 font-mono mt-1">Check browser console (F12) for error details</p>
             </div>
           )}
-          
           <div className="flex flex-col gap-3">
             <button 
               onClick={() => window.location.href = '/'}
@@ -207,6 +208,24 @@ const PublicCampaignPage = () => {
               Try Again
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (campaign.status !== 2) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 via-blue-50 to-purple-50 px-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-yellow-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">Campaign Not Active</h1>
+          <p className="text-gray-600 text-base mb-6">
+            This campaign is not currently accepting responses. It may not be started yet or has ended.
+          </p>
         </div>
       </div>
     );
@@ -268,7 +287,7 @@ const PublicCampaignPage = () => {
         )}
 
         {/* ═══ Success Screen ═══ */}
-        {success && (
+        {(success || alreadySubmitted) && (
           <div className="text-center animate-fade-in py-12">
             <div className="w-24 h-24 mx-auto mb-8 rounded-full bg-linear-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg animate-scale-in">
               <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -278,7 +297,9 @@ const PublicCampaignPage = () => {
             
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Thank You!</h2>
             <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-              Your information has been successfully submitted. We'll get back to you shortly with more details about our offerings.
+              {alreadySubmitted
+                ? 'You have already submitted your information for this campaign.'
+                : "Your information has been successfully submitted. We'll get back to you shortly with more details about our offerings."}
             </p>
 
             {/* Success badges */}

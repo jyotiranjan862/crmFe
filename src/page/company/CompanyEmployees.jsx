@@ -7,7 +7,6 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '../../api/employeeAndAdminApi';
 import { fetchRoles } from '../../api/rolePermissionsApi';
 import { assignLead, fetchUnassignedLeads, fetchEmployees } from '../../api/leadApi';
-import { uploadAvatar } from '../../api/uploadApi'; // Import the upload API
 import { AddButton } from '../../components/common/Table';
 
 const statusOptions = [
@@ -120,7 +119,7 @@ const CompanyEmployees = () => {
   const [editData, setEditData] = useState(null);
   const [rowToToggle, setRowToToggle] = useState(null);
 
-  const initialFields = { name: '', email: '', phone: '', role: '', password: '', confirmPassword: '', avatar: null };
+  const initialFields = { name: '', email: '', phone: '', role: '', password: '', confirmPassword: '' };
   const [modalFields, setModalFields] = useState(initialFields);
 
   const [page, setPage] = useState(1);
@@ -198,7 +197,6 @@ const CompanyEmployees = () => {
       role: row.role?._id || row.role || '',
       password: '',
       confirmPassword: '',
-      avatar: null,
     });
     loadSelectData();
     setModalOpen(true);
@@ -207,24 +205,20 @@ const CompanyEmployees = () => {
   const handleSubmit = async () => {
     setModalLoading(true);
     try {
-      let avatarUrl = '';
-      if (modalFields.avatar) {
-        const formData = new FormData();
-        formData.append('file', modalFields.avatar);
-        const uploadResponse = await uploadAvatar(formData);
-        avatarUrl = uploadResponse.url;
-      }
-
       if (editData) {
-        // For edit, do not send password or confirmPassword
-        const payload = {
-          name: modalFields.name,
-          email: modalFields.email,
-          phone: modalFields.phone,
-          role: modalFields.role,
-          company: user._id,
-          avatar: avatarUrl,
-        };
+        // Only send changed fields
+        const payload = {};
+        if (modalFields.name !== editData.name) payload.name = modalFields.name;
+        if (modalFields.email !== editData.email) payload.email = modalFields.email;
+        if (modalFields.phone !== editData.phone) payload.phone = modalFields.phone;
+        if ((editData.role?._id || editData.role) !== modalFields.role) payload.role = modalFields.role;
+        if (modalFields.password) payload.password = modalFields.password;
+        if (Object.keys(payload).length === 0) {
+          setModalOpen(false);
+          setModalLoading(false);
+          return;
+        }
+        payload.company = user._id;
         await updateEmployee(editData._id, payload);
       } else {
         // For create, send only required fields
@@ -265,7 +259,6 @@ const CompanyEmployees = () => {
   };
 
   const tableHeaders = [
-    { key: 'avatar', label: '', type: 'avatar', nameKey: 'name' },
     { key: 'name', label: 'Name', searchable: true },
     { key: 'email', label: 'Email', searchable: true },
     { key: 'phone', label: 'Phone' },
@@ -413,28 +406,26 @@ const CompanyEmployees = () => {
                   ))}
                 </select>
               </div>
-              {!editData && (
-                <>
-                  <Input
-                    label="Password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={modalFields.password}
-                    onChange={f("password")}
-                    required
-                  />
-                  <Input
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={modalFields.confirmPassword}
-                    onChange={f("confirmPassword")}
-                    required
-                  />
-                </>
-              )}
+              <>
+                <Input
+                  label="Password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={modalFields.password}
+                  onChange={f("password")}
+                  required={!editData}
+                />
+                <Input
+                  label="Confirm Password"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={modalFields.confirmPassword}
+                  onChange={f("confirmPassword")}
+                  required={!editData}
+                />
+              </>
             </div>
           </form>
         )}
